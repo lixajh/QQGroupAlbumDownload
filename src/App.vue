@@ -7,11 +7,9 @@
       <el-step title="完成结果" :icon="WindPower" />
     </el-steps>
     <div class="content">
-      <div v-if="stepActive == 1">
-        <div >
-          请输入下载相册的QQ群号
-        </div>
-        <div style="margin: 30px 0 50px;">
+      <div v-if="stepActive == 0">
+        <div>请输入下载相册的QQ群号</div>
+        <div style="margin: 30px 0 50px">
           <el-input
             v-model="qqGroupNum"
             style="width: 240px"
@@ -19,10 +17,18 @@
             clearable
           />
         </div>
-        <div >
-          <el-button style="width: 100%;" type="primary">确认</el-button>
+        <div>
+          <el-button
+            @click="submitqqGroupNum"
+            style="width: 100%"
+            type="primary"
+            >确认</el-button
+          >
         </div>
       </div>
+      <div v-if="stepActive == 1"></div>
+      <div v-if="stepActive == 2"></div>
+      <div v-if="stepActive == 3"></div>
     </div>
   </div>
 </template>
@@ -33,9 +39,19 @@ import {
   WindPower,
   PictureRounded,
 } from "@element-plus/icons-vue";
+import { ElMessage } from "element-plus";
 import { ref } from "vue";
-const stepActive = ref(1);
+const stepActive = ref(0);
 const qqGroupNum = ref("");
+const submitqqGroupNum = () => {
+  if (qqGroupNum.value == "") {
+    ElMessage.error("请输入内容");
+  }
+  if (qqGroupNum.value.match(/[^0-9]/g) !== null) {
+    ElMessage.error("请输入正确的群号");
+  }
+  stepActive.value=1
+};
 </script>
 
 <style lang="scss">
