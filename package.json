@@ -5,7 +5,7 @@
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
-    "electron-build": "npx electron ./main.js",
+    "electron-build": "npx electronmon ./main.js --log-level=3",
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
