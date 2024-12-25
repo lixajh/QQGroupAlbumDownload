@@ -5,10 +5,12 @@
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
-    "electron-build": "npx electronmon ./main.js --log-level=3",
+    "electron-build-dev": "cross-env NODE_ENV=development npx electronmon ./main.js --log-level=3",
+    "electron-build-pro": "npx electronmon ./main.js --log-level=3",
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
+    "axios": "^1.7.9",
     "core-js": "^3.8.3",
     "electron": "^33.2.1",
     "electron-reloader": "^1.2.3",
@@ -24,6 +26,7 @@
     "@vue/cli-plugin-typescript": "~5.0.0",
     "@vue/cli-service": "~5.0.0",
     "@vue/eslint-config-typescript": "^9.1.0",
+    "cross-env": "^7.0.3",
     "eslint": "^7.32.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-prettier": "^4.0.0",
