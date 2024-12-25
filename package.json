@@ -5,10 +5,13 @@
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
+    "electron-build": "npx electron ./main.js",
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
     "core-js": "^3.8.3",
+    "electron": "^33.2.1",
+    "electron-reloader": "^1.2.3",
     "vue": "^3.2.13",
     "vue-router": "^4.0.3"
   },
