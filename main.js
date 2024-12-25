@@ -25,7 +25,7 @@ function getTK(str) {
 }
 function createMainWindow(){
   mainWindow = new BrowserWindow({
-    height: 500,
+    height: 400,
     useContentSize: true,
     width: 800,
     title: "控制中心",

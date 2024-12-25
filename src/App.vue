@@ -1,22 +1,67 @@
 <template>
-  <div class="mb-4">
-    <el-button>Default</el-button>
-    <el-button type="primary">Primary</el-button>
-    <el-button type="success">Success</el-button>
-    <el-button type="info">Info</el-button>
-    <el-button type="warning">Warning</el-button>
-    <el-button type="danger">Danger</el-button>
+  <div class="main">
+    <el-steps simple :active="stepActive">
+      <el-step title="输入群号" :icon="Edit" />
+      <el-step title="选择相册" :icon="PictureRounded" />
+      <el-step title="处理任务" :icon="Download" />
+      <el-step title="完成结果" :icon="WindPower" />
+    </el-steps>
+    <div class="content">
+      <div v-if="stepActive == 1">
+        <div >
+          请输入下载相册的QQ群号
+        </div>
+        <div style="margin: 30px 0 50px;">
+          <el-input
+            v-model="qqGroupNum"
+            style="width: 240px"
+            placeholder="请输入群号"
+            clearable
+          />
+        </div>
+        <div >
+          <el-button style="width: 100%;" type="primary">确认</el-button>
+        </div>
+      </div>
+    </div>
   </div>
-
 </template>
+<script lang="ts" setup>
+import {
+  Edit,
+  Download,
+  WindPower,
+  PictureRounded,
+} from "@element-plus/icons-vue";
+import { ref } from "vue";
+const stepActive = ref(1);
+const qqGroupNum = ref("");
+</script>
 
 <style lang="scss">
+.main {
+  height: 100%;
+  padding: 3% 5%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+.content {
+  flex: 1 1 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
 #app {
   font-family: Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
   color: #2c3e50;
+  height: 100vh;
+}
+body {
+  margin: 0px;
 }
 
 nav {
