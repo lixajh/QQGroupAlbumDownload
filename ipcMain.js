@@ -67,14 +67,29 @@ async function getPatchAlbum(qunId, albumId, start) {
         "x-requested-with": "XMLHttpRequest",
       },
     });
-    console.log(data);
-    
+
     let list = data.data.photolist;
-    console.log(list);
     list = list
       .map((item) => {
+        const picList = [];
+        for (const key in item.photourl) {
+          picList.push(item.photourl[key]);
+        }
+        picList.sort((a, b) => {
+          if (a.width !== b.width) {
+            return b.width - a.width;
+          }
+          if (a.height !== b.height) {
+            return b.height - a.height;
+          }
+          return b.enlarge_rate - a.enlarge_rate;
+        });
         return {
-          photo: item.title,
+          photoURL: picList[0].url, //目前未遇到不存在
+          videoURL:
+            item.videodata.actionurl == ""
+              ? undefined
+              : item.videodata.actionurl, //默认值空字符串
           num: item.photocnt,
         };
       })
@@ -92,12 +107,12 @@ async function getPatchAlbum(qunId, albumId, start) {
     };
   }
 }
+function downloadAlbum() {
+  console.log("downloadAlbum");
+}
 
 function stopDownloadAlbum() {
   console.log("stopDownloadAlbum");
-}
-function downloadAlbum() {
-  console.log("downloadAlbum");
 }
 ipcMain?.handle("getAlbumList", getAlbumList);
 ipcMain?.handle("downloadAlbum", downloadAlbum);
@@ -105,3 +120,73 @@ ipcMain?.handle("stopDownloadAlbum", stopDownloadAlbum);
 
 exports.getAlbumList = getAlbumList;
 exports.getPatchAlbum = getPatchAlbum;
+
+// eslint-disable-next-line @typescript-eslint/no-empty-function
+async function download() {}
+
+class queue {
+  list = [];
+  async pause() {
+    for (let index = 0; index < this.list.length; index++) {
+      await this.list.pause();
+    }
+  }
+  async resume() {
+    for (let index = 0; index < this.list.length; index++) {
+      this.list.resume();
+    }
+    await this.run();
+  }
+  async run() {
+    //留余地，日后可并发
+    for (let index = 0; index < this.list.length; index++) {
+      await this.list.run();
+    }
+  }
+}
+class AlbumTask {
+  list = [];
+  qunId;
+  albumId;
+  start = 0;
+  runStatus = "run";
+  waitResolve = undefined;
+  firstRun = true;
+  async init(qunId, albumId) {
+    this.qunId = qunId;
+    this.albumId = albumId;
+  }
+
+  async nextAlbum() {
+    this.list = await getPatchAlbum(this.qunId, this.albumId, this.start);
+    this.start += 40;
+  }
+  async pause() {
+    return new Promise((resolve) => {
+      this.runStatus = "pause";
+      this.waitResolve = resolve;
+    });
+  }
+  async resume() {
+    this.runStatus = "run";
+  }
+  async run() {
+    if (this.firstRun) {
+      await this.nextAlbum();
+      this.firstRun = false;
+    }
+    while (this.list.length !== 0 && this.runStatus == "run") {
+      const item = this.list.pop();
+      await download(item.photoURL);
+      if (item.videoURL) {
+        await download(item.videoURL);
+      }
+      if (this.list.length == 0) {
+        await this.nextAlbum();
+      }
+    }
+    if (this.runStatus === "pause") {
+      this.waitResolve();
+    }
+  }
+}
