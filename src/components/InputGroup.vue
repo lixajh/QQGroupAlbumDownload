@@ -29,6 +29,9 @@
         </el-col>
       </el-row>
     </div>
+    <div style="display: flex;justify-content: center;align-items: center;margin-top: 20px;">
+      <el-link  :underline="false">作者 : 李恒道、chenyin626</el-link>
+    </div>
   </div>
 </template>
 <script lang="ts" setup>
