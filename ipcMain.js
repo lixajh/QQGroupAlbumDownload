@@ -1,5 +1,7 @@
 const { default: axios } = require("axios");
-const { ipcMain } = require("electron");
+const { ipcMain, dialog,shell } = require("electron");
+const fsExtra = require("fs-extra");
+const path = require("path");
 let cookieStr = "";
 let tk = "";
 let qq = "";
@@ -13,7 +15,7 @@ exports.setCookies = (value) => {
   cookieStr = value;
 };
 
-async function getAlbumList(event,qunId) {
+async function getAlbumList(event, qunId) {
   const url = `https://h5.qzone.qq.com/proxy/domain/u.photo.qzone.qq.com/cgi-bin/upp/qun_list_album_v2?g_tk=${tk}&callback=shine2_Callback&qunId=${qunId}&uin=${qq}&start=0&num=1000&getMemberRole=1&inCharset=utf-8&outCharset=utf-8&source=qzone&attach_info=&callbackFun=shine2`;
   try {
     const { data } = await axios.get(url, {
@@ -27,8 +29,10 @@ async function getAlbumList(event,qunId) {
         msg: "无访问权限",
       };
     }
-    let list = new Function("", "const shine2_Callback=a=>a;return " + data)()
-      .data.album;
+    let list =
+      new Function("", "const shine2_Callback=a=>a;return " + data)().data
+        .album ?? [];
+
     list = list
       .map((item) => {
         return {
@@ -90,7 +94,7 @@ async function getPatchAlbum(qunId, albumId, start) {
             item.videodata.actionurl == ""
               ? undefined
               : item.videodata.actionurl, //默认值空字符串
-          num: item.photocnt,
+          name: item.sloc,
         };
       })
       .filter((item) => item.num != 0);
@@ -108,30 +112,97 @@ async function getPatchAlbum(qunId, albumId, start) {
   }
 }
 let globalQueue;
-async function createDownloadAlbum(event,qunId, arr) {
+
+let download = () => undefined;
+function downloadFactory(userDir) {
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  return async function (url, albumName, name) {
+    // eslint-disable-next-line no-async-promise-executor
+    return new Promise(async (resolve, reject) => {
+      name = filterFileName(name);
+      const baseDir = path.join(userDir, "./" + albumName + "/");
+      const fileName = path.join(userDir, "./" + albumName + "/" + name);
+      await fsExtra.mkdirp(baseDir);
+      // eslint-disable-next-line no-async-promise-executor
+      const fileStatus = await new Promise(async (resolve) => {
+        try {
+          const result = await fsExtra.pathExists(fileName);
+          resolve(result);
+        } catch (error) {
+          resolve(false);
+        }
+      });
+      if (fileStatus) {
+        resolve();
+        return;
+      }
+      const stream = (
+        await axios.get(url, {
+          responseType: "stream",
+        })
+      ).data;
+      const fileSteam = fsExtra.createWriteStream(fileName, {
+        highWaterMark: 1000,
+      });
+      stream.pipe(fileSteam);
+      let isEnd = false;
+      const timer = setInterval(() => {
+        if (isEnd) {
+          isEnd = false;
+        } else {
+          clearInterval(timer);
+          fileSteam.end();
+          reject();
+        }
+      }, 30000);
+      stream.on("end", () => {
+        isEnd = true;
+        clearInterval(timer);
+        resolve();
+      });
+      stream.on("progress", () => {
+        isEnd = true;
+      });
+    });
+  };
+}
+
+async function createDownloadAlbum(event, qunId, arr) {
   await globalQueue?.pause();
+  const showDialog = await dialog.showOpenDialog({
+    properties: ["openDirectory"],
+  });
+  if (showDialog.filePaths.length == 0) {
+    return false;
+  }
+  download = downloadFactory(showDialog.filePaths[0]);
   globalQueue = new queue();
   for (let index = 0; index < arr.length; index++) {
     const item = arr[index];
-    globalQueue.add(new AlbumTask(qunId, item.id, item.num));
+    globalQueue.add(new AlbumTask(qunId, item.id, item.num, item.title));
   }
-  globalQueue.run();
+  globalQueue?.run();
+  return true;
 }
 
-async function stopDownloadAlbum(event,id) {
+async function stopDownloadAlbum(event, id) {
   await globalQueue?.pause(id);
 }
-async function resumeDownloadAlbum(event,id) {
+async function resumeDownloadAlbum(event, id) {
   await globalQueue?.resume(id);
 }
-async function deleteDownloadAlbum(event,id) {
-  await globalQueue?.pause();
+function openPage(event,url){
+  shell.openExternal(url)
+}
+async function deleteDownloadAlbum(event, id) {
+  await globalQueue?.pause(id);
   if (id !== undefined) {
     globalQueue.list = globalQueue.list.filter((item) => {
       return item.albumId != id;
     });
+  } else {
+    globalQueue = undefined;
   }
-  globalQueue = undefined;
 }
 async function getDownloadAlbumStatus() {
   return globalQueue?.getAllStatus() ?? [];
@@ -140,13 +211,15 @@ ipcMain?.handle("getAlbumList", getAlbumList);
 ipcMain?.handle("createDownloadAlbum", createDownloadAlbum);
 ipcMain?.handle("stopDownloadAlbum", stopDownloadAlbum);
 ipcMain?.handle("resumeDownloadAlbum", resumeDownloadAlbum);
+ipcMain?.handle("openPage", openPage);
 ipcMain?.handle("deleteDownloadAlbum", deleteDownloadAlbum);
 ipcMain?.handle("getDownloadAlbumStatus", getDownloadAlbumStatus);
 exports.getAlbumList = getAlbumList;
 exports.getPatchAlbum = getPatchAlbum;
 
-// eslint-disable-next-line @typescript-eslint/no-empty-function
-async function download() {}
+const filterFileName = (name) => {
+  return name.match(/[0-9a-zA-Z/.]*/g).join("");
+};
 
 class queue {
   list = [];
@@ -156,32 +229,32 @@ class queue {
   async pause(id) {
     for (let index = 0; index < this.list.length; index++) {
       if (id == undefined) {
-        await this.list.pause();
-      } else if (id === this.list.albumId) {
-        await this.list.pause();
+        await this.list[index].pause();
+      } else if (id === this.list[index].albumId) {
+        await this.list[index].pause();
       }
     }
   }
   async resume(id) {
     for (let index = 0; index < this.list.length; index++) {
       if (id == undefined) {
-        this.list.resume();
-      } else if (id === this.list.albumId) {
-        this.list.resume();
+        this.list[index].resume();
+      } else if (id === this.list[index].albumId) {
+        this.list[index].resume();
       }
     }
-    await this.run();
+    this.run();
   }
   async run() {
     //留余地，日后可并发
     for (let index = 0; index < this.list.length; index++) {
-      await this.list.run();
+      await this.list[index].run();
     }
   }
-  async getAllStatus() {
+  getAllStatus() {
     const list = [];
     for (let index = 0; index < this.list.length; index++) {
-      const data = await this.list.getStatus();
+      const data = this.list[index].getStatus();
       list.push(data);
     }
     return list;
@@ -192,21 +265,31 @@ class AlbumTask {
   qunId;
   albumId;
   start = 0;
-  runStatus = "wating"; //wating 等待中 run 运行中 pause暂停中 finish完成
+  runStatus = "wating"; //wating 等待中 run 运行中 pause暂停中 finish完成 error
   waitResolve = undefined;
   firstRun = true;
   success = 0;
   fail = 0;
   total = 0;
-  constructor(qunId, albumId, total) {
+  title = "";
+  constructor(qunId, albumId, total, title) {
     this.qunId = qunId;
     this.albumId = albumId;
     this.total = total;
+    this.title = title;
   }
 
   async nextAlbum() {
-    this.list = await getPatchAlbum(this.qunId, this.albumId, this.start);
-    this.start += 40;
+    for (let index = 0; index < 3; index++) {
+      const data = await getPatchAlbum(this.qunId, this.albumId, this.start);
+      if (data.status == "success") {
+        this.start += 40;
+        this.list = data.data;
+        return;
+      }
+    }
+    this.list = [];
+    this.runStatus = "error";
   }
   async pause() {
     return new Promise((resolve) => {
@@ -222,6 +305,9 @@ class AlbumTask {
     this.runStatus = "wating";
   }
   async run() {
+    if (this.runStatus == "run") {
+      return;
+    }
     if (this.runStatus == "pause") {
       return;
     }
@@ -229,33 +315,46 @@ class AlbumTask {
       return;
     }
     this.runStatus = "run";
-    if (this.firstRun) {
+    if (this.firstRun || this.runStatus == "error") {
       await this.nextAlbum();
       this.firstRun = false;
     }
     while (this.list.length !== 0 && this.runStatus == "run") {
       const item = this.list.pop();
-      await download(item.photoURL);
-      if (item.videoURL) {
-        await download(item.videoURL);
+      try {
+        await download(item.photoURL, this.title, item.name + ".jpg");
+        if (item.videoURL) {
+          await download(item.videoURL, this.title, item.name + ".mp4");
+          this.success++;
+        } else {
+          this.success++;
+        }
+      } catch (error) {
+        this.fail++;
       }
+      if (this.runStatus === "pause") {
+        break;
+      }
+
       if (this.list.length == 0) {
         await this.nextAlbum();
       }
     }
     if (this.runStatus === "pause") {
       this.waitResolve();
-    } else {
+    } else if (this.runStatus != "error") {
       this.runStatus = "finish";
     }
   }
-  async getStatus() {
+  getStatus() {
     return {
       id: this.albumId,
-      total: this.total,
+      num: this.total,
       fail: this.fail,
       success: this.success,
       status: this.runStatus,
+      title: this.title,
+      showText: `成功${this.success} 失败:${this.fail}`,
     };
   }
 }

@@ -4,7 +4,6 @@
       <el-step title="输入群号" :icon="Edit" />
       <el-step title="选择相册" :icon="PictureRounded" />
       <el-step title="处理任务" :icon="Download" />
-      <el-step title="完成结果" :icon="WindPower" />
     </el-steps>
     <div v-if="stepActive == 0" class="content">
       <InputGroup
@@ -24,16 +23,33 @@
       <SelectAlbum
         :qqAlbumList="qqAlbumList"
         @getSelectAlbumList="getSelectAlbumList"
+        @back-page="backGroup"
       ></SelectAlbum>
     </div>
 
-    <div v-if="stepActive == 2"></div>
-    <div v-if="stepActive == 3"></div>
+    <div
+      v-if="stepActive == 2"
+      style="
+        display: flex;
+        flex: 1 1 0;
+        flex-direction: column;
+        overflow: hidden;
+      "
+    >
+      <DownloadPage
+        :qqAlbumList="qqSelectAlbumList"
+        :qunId="qqGroupNum"
+        @back-page="backSelectAlbum"
+      >
+      </DownloadPage>
+    </div>
   </div>
 </template>
 <script lang="ts" setup>
 import InputGroup from "@/components/InputGroup.vue";
 import SelectAlbum from "@/components/SelectAlbum.vue";
+import DownloadPage from "@/components/DownloadPage.vue";
+
 import {
   Edit,
   Download,
@@ -44,14 +60,22 @@ import { ref } from "vue";
 const stepActive = ref(0);
 const qqGroupNum = ref("");
 const qqAlbumList = ref<any[]>([]);
+const qqSelectAlbumList = ref<any[]>([]);
 const getQQAlbumList = (list: any) => {
   qqAlbumList.value = list;
   stepActive.value = 1;
 };
 const getSelectAlbumList = (list: any) => {
-  qqAlbumList.value = list;
+  qqSelectAlbumList.value = list;
   stepActive.value = 2;
 };
+const backSelectAlbum = () => {
+  stepActive.value = 1;
+};
+const backGroup = () => {
+  stepActive.value = 0;
+};
+
 </script>
 
 <style lang="scss">

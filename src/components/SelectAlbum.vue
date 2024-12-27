@@ -15,17 +15,19 @@
     </el-scrollbar>
   </div>
 
-  <div
-    style="
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      margin-top: 10px;
-    "
-  >
-    <el-button @click="startDownload" style="width: 60%" type="primary"
-      >开始下载</el-button
-    >
+  <div>
+    <el-row>
+      <el-col :span="12" style="padding: 0% 5%">
+        <el-button @click="startDownload" style="width: 100%" type="primary"
+          >开始下载</el-button
+        >
+      </el-col>
+      <el-col :span="12" style="padding: 0% 5%">
+        <el-button @click="backPage" style="width: 100%" type="warning"
+          >返回上级</el-button
+        >
+      </el-col>
+    </el-row>
   </div>
 </template>
 <script lang="ts" setup>
@@ -37,7 +39,10 @@ const props = defineProps({
     required: true,
   },
 });
-const emit = defineEmits(["getSelectAlbumList"]);
+const emit = defineEmits(["backPage","getSelectAlbumList"]);
+const backPage = () => {
+  emit("backPage");
+};
 const selectAlbumList = ref<Array<any>>([]);
 const handleSelectionChange = (val: any[]) => {
   selectAlbumList.value = val;

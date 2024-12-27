@@ -1,6 +1,7 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 const preloadInjectObj = {
+  openPage: (url) => ipcRenderer.invoke("openPage", url),
   getAlbumList: (qqGroup) => ipcRenderer.invoke("getAlbumList", qqGroup),
   createDownloadAlbum: (qunId, arr) =>
     ipcRenderer.invoke("createDownloadAlbum", qunId, arr),
