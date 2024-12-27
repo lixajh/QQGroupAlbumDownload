@@ -3,7 +3,7 @@ name: Build
 on:
   push:
     branches:
-      - master
+      - main
 
 jobs:
   release:
@@ -33,7 +33,7 @@ jobs:
       - name: Cleanup Artifacts for Windows
         run: |
           npx rimraf "dist/!(*.exe)"
-          
+
       - name: upload artifacts
         uses: actions/upload-artifact@v3.0.0
         with:
