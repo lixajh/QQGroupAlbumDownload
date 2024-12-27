@@ -13,7 +13,7 @@ exports.setCookies = (value) => {
   cookieStr = value;
 };
 
-async function getAlbumList(qunId) {
+async function getAlbumList(event,qunId) {
   const url = `https://h5.qzone.qq.com/proxy/domain/u.photo.qzone.qq.com/cgi-bin/upp/qun_list_album_v2?g_tk=${tk}&callback=shine2_Callback&qunId=${qunId}&uin=${qq}&start=0&num=1000&getMemberRole=1&inCharset=utf-8&outCharset=utf-8&source=qzone&attach_info=&callbackFun=shine2`;
   try {
     const { data } = await axios.get(url, {
@@ -108,31 +108,40 @@ async function getPatchAlbum(qunId, albumId, start) {
   }
 }
 let globalQueue;
-async function createDownloadAlbum(qunId, arr) {
+async function createDownloadAlbum(event,qunId, arr) {
   await globalQueue?.pause();
   globalQueue = new queue();
   for (let index = 0; index < arr.length; index++) {
     const item = arr[index];
     globalQueue.add(new AlbumTask(qunId, item.id, item.num));
   }
+  globalQueue.run();
 }
 
-async function stopDownloadAlbum() {
-  await globalQueue?.pause();
+async function stopDownloadAlbum(event,id) {
+  await globalQueue?.pause(id);
 }
-async function resumeDownloadAlbum() {
-  await globalQueue?.resume();
+async function resumeDownloadAlbum(event,id) {
+  await globalQueue?.resume(id);
 }
-async function deleteDownloadAlbum() {
+async function deleteDownloadAlbum(event,id) {
   await globalQueue?.pause();
+  if (id !== undefined) {
+    globalQueue.list = globalQueue.list.filter((item) => {
+      return item.albumId != id;
+    });
+  }
   globalQueue = undefined;
+}
+async function getDownloadAlbumStatus() {
+  return globalQueue?.getAllStatus() ?? [];
 }
 ipcMain?.handle("getAlbumList", getAlbumList);
 ipcMain?.handle("createDownloadAlbum", createDownloadAlbum);
 ipcMain?.handle("stopDownloadAlbum", stopDownloadAlbum);
 ipcMain?.handle("resumeDownloadAlbum", resumeDownloadAlbum);
 ipcMain?.handle("deleteDownloadAlbum", deleteDownloadAlbum);
-
+ipcMain?.handle("getDownloadAlbumStatus", getDownloadAlbumStatus);
 exports.getAlbumList = getAlbumList;
 exports.getPatchAlbum = getPatchAlbum;
 
@@ -144,14 +153,22 @@ class queue {
   add(item) {
     this.list.push(item);
   }
-  async pause() {
+  async pause(id) {
     for (let index = 0; index < this.list.length; index++) {
-      await this.list.pause();
+      if (id == undefined) {
+        await this.list.pause();
+      } else if (id === this.list.albumId) {
+        await this.list.pause();
+      }
     }
   }
-  async resume() {
+  async resume(id) {
     for (let index = 0; index < this.list.length; index++) {
-      this.list.resume();
+      if (id == undefined) {
+        this.list.resume();
+      } else if (id === this.list.albumId) {
+        this.list.resume();
+      }
     }
     await this.run();
   }
@@ -205,6 +222,12 @@ class AlbumTask {
     this.runStatus = "wating";
   }
   async run() {
+    if (this.runStatus == "pause") {
+      return;
+    }
+    if (this.runStatus == "finish") {
+      return;
+    }
     this.runStatus = "run";
     if (this.firstRun) {
       await this.nextAlbum();

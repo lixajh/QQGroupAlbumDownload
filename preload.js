@@ -1,7 +1,14 @@
-const { contextBridge, ipcRenderer } = require('electron')
+const { contextBridge, ipcRenderer } = require("electron");
 
-contextBridge.exposeInMainWorld('QQ', {
-  getAlbumList: (qqGroup) => ipcRenderer.invoke('getAlbumList',qqGroup),
-  downloadAlbum:() => ipcRenderer.invoke('downloadAlbum'),
-  stopDownloadAlbum:() => ipcRenderer.invoke('stopDownloadAlbum')
-})
+const preloadInjectObj = {
+  getAlbumList: (qqGroup) => ipcRenderer.invoke("getAlbumList", qqGroup),
+  createDownloadAlbum: (qunId, arr) =>
+    ipcRenderer.invoke("createDownloadAlbum", qunId, arr),
+  stopDownloadAlbum: (id) => ipcRenderer.invoke("stopDownloadAlbum", id),
+  resumeDownloadAlbum: (id) => ipcRenderer.invoke("resumeDownloadAlbum", id),
+  deleteDownloadAlbum: (id) => ipcRenderer.invoke("deleteDownloadAlbum", id),
+  getDownloadAlbumStatus: () => ipcRenderer.invoke("getDownloadAlbumStatus"),
+};
+
+contextBridge.exposeInMainWorld("QQ", preloadInjectObj);
+exports.preloadInjectObj=preloadInjectObj
