@@ -1,5 +1,5 @@
 const { default: axios } = require("axios");
-const { ipcMain, dialog,shell } = require("electron");
+const { ipcMain, dialog, shell } = require("electron");
 const fsExtra = require("fs-extra");
 const path = require("path");
 let cookieStr = "";
@@ -191,8 +191,8 @@ async function stopDownloadAlbum(event, id) {
 async function resumeDownloadAlbum(event, id) {
   await globalQueue?.resume(id);
 }
-function openPage(event,url){
-  shell.openExternal(url)
+function openPage(event, url) {
+  shell.openExternal(url);
 }
 async function deleteDownloadAlbum(event, id) {
   await globalQueue?.pause(id);
@@ -223,32 +223,42 @@ const filterFileName = (name) => {
 
 class queue {
   list = [];
+  flag = "";
   add(item) {
     this.list.push(item);
   }
   async pause(id) {
+    this.flag = "pause";
+    const list = [];
     for (let index = 0; index < this.list.length; index++) {
       if (id == undefined) {
-        await this.list[index].pause();
+        list.push(this.list[index].pause());
       } else if (id === this.list[index].albumId) {
-        await this.list[index].pause();
+        list.push(this.list[index].pause());
       }
     }
+    return Promise.all(list);
   }
   async resume(id) {
+    const list = [];
     for (let index = 0; index < this.list.length; index++) {
       if (id == undefined) {
-        this.list[index].resume();
+        list.push(this.list[index].resume());
       } else if (id === this.list[index].albumId) {
-        this.list[index].resume();
+        list.push(this.list[index].resume());
       }
     }
+    await Promise.all(list);
     this.run();
   }
   async run() {
     //留余地，日后可并发
+    this.flag = "run";
     for (let index = 0; index < this.list.length; index++) {
       await this.list[index].run();
+      if (this.flag != "run") {
+        break;
+      }
     }
   }
   getAllStatus() {
