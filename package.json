@@ -5,15 +5,24 @@
   "author": "lihengdao",
   "main": "main.js",
   "build": {
-    "appId": "qq.album.download"
+    "appId": "qq.album.download",
+    "copyright":"LiHengDao",
+    "icon": "logo.ico",
+    "productName":"QQ群相册下载",
+    "win": {
+      "target": [
+        "portable"
+      ]
+    }
   },
   "private": true,
+
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
     "electron-build-dev": "cross-env NODE_ENV=development npx electronmon ./main.js --log-level=3",
     "electron-build-pro": "npx electronmon ./main.js --log-level=3",
-    "pack": "electron-builder --dir",
+    "pack": "electron-builder",
     "lint": "vue-cli-service lint"
   },
   "dependencies": {

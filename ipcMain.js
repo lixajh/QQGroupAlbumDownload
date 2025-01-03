@@ -55,7 +55,6 @@ async function getAlbumList(event, qunId) {
     };
   }
 }
-//未完成
 async function getPatchAlbum(qunId, albumId, start) {
   const url = `https://h5.qzone.qq.com/groupphoto/inqq?g_tk=` + tk;
   const postData = `"qunId=${qunId}&albumId=${albumId}&uin=${qq}&start=${start}&num=36&getCommentCnt=0&getMemberRole=0&hostUin=${qq}&getalbum=0&platform=qzone&inCharset=utf-8&outCharset=utf-8&source=qzone&cmd=qunGetPhotoList&qunid=${qunId}&albumid=${albumId}&attach_info=start_count%3D${start}"`;
