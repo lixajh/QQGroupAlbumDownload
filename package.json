@@ -12,7 +12,8 @@
     "win": {
       "target": [
         "portable"
-      ]
+      ],
+      "artifactName": "${productName}${version}.${ext}"
     }
   },
   "private": true,
