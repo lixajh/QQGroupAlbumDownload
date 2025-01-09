@@ -8,12 +8,12 @@
     "appId": "qq.album.download",
     "copyright":"LiHengDao",
     "icon": "logo.ico",
-    "productName":"QQ群相册下载",
+    "productName":"QQGroupAlbumDownload",
     "win": {
       "target": [
         "portable"
       ],
-      "artifactName": "${productName}${version}.${ext}"
+      "artifactName": "${productName} ${version}.${ext}"
     }
   },
   "private": true,
