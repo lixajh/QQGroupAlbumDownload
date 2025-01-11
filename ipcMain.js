@@ -168,6 +168,14 @@ function downloadFactory(userDir) {
 
 async function createDownloadAlbum(event, qunId, arr) {
   await globalQueue?.pause();
+  globalQueue = new queue();
+  for (let index = 0; index < arr.length; index++) {
+    const item = arr[index];
+    globalQueue.add(new AlbumTask(qunId, item.id, item.num, item.title));
+  }
+  return true;
+}
+async function startDownloadAlbum() {
   const showDialog = await dialog.showOpenDialog({
     properties: ["openDirectory"],
   });
@@ -175,13 +183,7 @@ async function createDownloadAlbum(event, qunId, arr) {
     return false;
   }
   download = downloadFactory(showDialog.filePaths[0]);
-  globalQueue = new queue();
-  for (let index = 0; index < arr.length; index++) {
-    const item = arr[index];
-    globalQueue.add(new AlbumTask(qunId, item.id, item.num, item.title));
-  }
   globalQueue?.run();
-  return true;
 }
 
 async function stopDownloadAlbum(event, id) {
@@ -208,6 +210,7 @@ async function getDownloadAlbumStatus() {
 }
 ipcMain?.handle("getAlbumList", getAlbumList);
 ipcMain?.handle("createDownloadAlbum", createDownloadAlbum);
+ipcMain?.handle("startDownloadAlbum", startDownloadAlbum);
 ipcMain?.handle("stopDownloadAlbum", stopDownloadAlbum);
 ipcMain?.handle("resumeDownloadAlbum", resumeDownloadAlbum);
 ipcMain?.handle("openPage", openPage);
@@ -356,6 +359,12 @@ class AlbumTask {
     }
   }
   getStatus() {
+    let showText = "";
+    if (this.success == 0 && this.fail == 0) {
+      showText = `无执行内容`;
+    } else {
+      showText = `成功:${this.success} 失败:${this.fail}`;
+    }
     return {
       id: this.albumId,
       num: this.total,
@@ -363,7 +372,7 @@ class AlbumTask {
       success: this.success,
       status: this.runStatus,
       title: this.title,
-      showText: `成功${this.success} 失败:${this.fail}`,
+      showText: showText,
     };
   }
 }

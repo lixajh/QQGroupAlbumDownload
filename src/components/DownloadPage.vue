@@ -9,8 +9,20 @@
       >
         <el-table-column align="center" prop="title" label="名称" />
         <el-table-column align="center" prop="num" label="数量" />
-        <el-table-column align="center" prop="showText" label="状态" />
-        <el-table-column align="center" prop="status" label="执行状态" />
+        <el-table-column align="center" prop="showText" label="状态">
+          <template #default="scope">
+            <div>
+              {{ scope.row.showText }}
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column align="center" prop="status" label="执行状态">
+          <template #default="scope">
+            <div>
+              {{ scope.row.status }}
+            </div>
+          </template>
+        </el-table-column>
       </el-table>
     </el-scrollbar>
   </div>
@@ -81,13 +93,11 @@ const showList = ref([]);
 const isStart = ref(false);
 const isPause = ref(false);
 const backPage = () => {
-  emit("backPage");
+  deleteDownload();
 };
-const startDownload = async () => {
-  await window.QQ.createDownloadAlbum(
-    props.qunId,
-    deepToRaw(props.qqAlbumList)
-  );
+window.QQ.createDownloadAlbum(props.qunId, deepToRaw(props.qqAlbumList));
+const startDownload = () => {
+  window.QQ.startDownloadAlbum();
   isStart.value = true;
 };
 const stopDownload = async (id?: string) => {
@@ -111,6 +121,15 @@ const getDownloadStatus = async () => {
     }
   }
   if (isFinish) {
+    ElMessageBox.alert(
+      `所有相册下载完毕！`,
+      "信息提示",
+      {
+        confirmButtonText: "确认",
+        dangerouslyUseHTMLString: true,
+      }
+    );
+    stopDownload()
     clearInterval(timer);
   }
   showList.value = data;
@@ -118,9 +137,7 @@ const getDownloadStatus = async () => {
 let timer: number | undefined = undefined;
 onMounted(() => {
   timer = setInterval(() => {
-    if (isStart.value) {
-      getDownloadStatus();
-    }
+    getDownloadStatus();
   }, 1000);
 });
 onUnmounted(() => {
