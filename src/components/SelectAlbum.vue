@@ -4,6 +4,7 @@
   >
     <el-scrollbar height="100%">
       <el-table
+        ref="multipleTableRef"
         @selection-change="handleSelectionChange"
         :data="props.qqAlbumList"
         style="width: 100%; padding: 20px 0px; box-sizing: border-box"
@@ -31,7 +32,8 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { defineProps, defineEmits, toRaw } from "vue";
+import { defineProps, defineEmits, toRaw, ref, onMounted } from "vue";
+import type { TableInstance } from "element-plus";
 // eslint-disable-next-line vue/no-setup-props-destructure
 const props = defineProps({
   qqAlbumList: {
@@ -42,6 +44,16 @@ const props = defineProps({
     type: Array,
     required: true,
   },
+});
+const multipleTableRef = ref<TableInstance>();
+onMounted(() => {
+  props.selectAlbumList.forEach((item) => {
+      multipleTableRef.value?.toggleRowSelection(
+        item,
+        undefined,
+        undefined
+      )
+    })
 });
 const emit = defineEmits(["backPage", "setSelectAlbumList", "startDownload"]);
 const backPage = () => {

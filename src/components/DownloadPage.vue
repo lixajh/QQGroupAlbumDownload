@@ -120,28 +120,28 @@ window.QQ.createDownloadAlbum(props.qunId, deepToRaw(props.qqAlbumList));
 const startDownload = () => {
   window.QQ.startDownloadAlbum();
   isStart.value = true;
-  getDownloadStatus()
+  getDownloadStatus();
 };
 const stopDownload = async (id?: string) => {
   window.QQ.stopDownloadAlbum(id);
   if (id == undefined) {
     isPause.value = true;
   }
-  getDownloadStatus()
+  getDownloadStatus();
 };
 const resumeDownload = async (id?: string) => {
   window.QQ.resumeDownloadAlbum(id);
   if (id == undefined) {
     isPause.value = false;
   }
-  getDownloadStatus()
+  getDownloadStatus();
 };
 const deleteDownload = async (id?: string) => {
   window.QQ.deleteDownloadAlbum(id);
   if (id == undefined) {
     emit("backPage");
   }
-  getDownloadStatus()
+  getDownloadStatus();
 };
 const getDownloadStatus = async () => {
   const data = await window.QQ.getDownloadAlbumStatus();
@@ -151,12 +151,12 @@ const getDownloadStatus = async () => {
       isFinish = false;
     }
   }
-  if (isFinish) {
+  if (isFinish && isStart.value) {
     ElMessageBox.alert(`所有相册下载完毕！`, "信息提示", {
       confirmButtonText: "确认",
       dangerouslyUseHTMLString: true,
     });
-    stopDownload();
+    window.QQ.stopDownloadAlbum();
     clearInterval(timer);
   }
   showList.value = data;

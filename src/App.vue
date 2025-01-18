@@ -66,9 +66,11 @@ const qqSelectAlbumList = ref<any[]>([]);
 const getQQAlbumList = (list: any) => {
   qqAlbumList.value = list;
   stepActive.value = 1;
+  qqSelectAlbumList.value = [];
 };
 const setSelectAlbumList = (list: any) => {
   qqSelectAlbumList.value = list;
+
 };
 const startDownload=()=>{
   stepActive.value = 2;
