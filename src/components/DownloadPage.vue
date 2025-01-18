@@ -151,13 +151,14 @@ const getDownloadStatus = async () => {
       isFinish = false;
     }
   }
-  if (isFinish && isStart.value) {
+  if (isFinish && isStart.value && timer !== undefined) {
     ElMessageBox.alert(`所有相册下载完毕！`, "信息提示", {
       confirmButtonText: "确认",
       dangerouslyUseHTMLString: true,
     });
     window.QQ.stopDownloadAlbum();
     clearInterval(timer);
+    timer = undefined;
   }
   showList.value = data;
 };

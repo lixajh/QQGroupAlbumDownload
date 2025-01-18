@@ -4,7 +4,6 @@ const fsExtra = require("fs-extra");
 const path = require("path");
 const { TaskStatus } = require("./consts");
 const { getCookies, getQQ, getTk } = require("./qqCore");
-console.log("-----");
 async function getAlbumList(event, qunId) {
   const url = `https://h5.qzone.qq.com/proxy/domain/u.photo.qzone.qq.com/cgi-bin/upp/qun_list_album_v2?g_tk=${getTk()}&callback=shine2_Callback&qunId=${qunId}&uin=${getQQ()}&start=0&num=1000&getMemberRole=1&inCharset=utf-8&outCharset=utf-8&source=qzone&attach_info=&callbackFun=shine2`;
   try {
