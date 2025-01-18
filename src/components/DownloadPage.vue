@@ -19,7 +19,34 @@
         <el-table-column align="center" prop="status" label="执行状态">
           <template #default="scope">
             <div>
-              {{ scope.row.status }}
+              {{ TaskStatusText[scope.row.status] }}
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column align="center" prop="opera" label="操作" width="150">
+          <template #default="scope">
+            <div>
+              <el-space>
+                <el-button
+                  @click="stopDownload(scope.row.id)"
+                  v-if="scope.row.status !== TaskStatus.PAUSE"
+                  :disabled="scope.row.status !== TaskStatus.RUN"
+                  type="primary"
+                  >暂停</el-button
+                >
+                <el-button
+                  @click="resumeDownload(scope.row.id)"
+                  v-else
+                  type="success"
+                  >继续</el-button
+                >
+                <el-button
+                  @click="deleteDownload(scope.row.id)"
+                  :disabled="scope.row.status == TaskStatus.FINISH"
+                  type="danger"
+                  >删除</el-button
+                >
+              </el-space>
             </div>
           </template>
         </el-table-column>
@@ -69,14 +96,8 @@
 </template>
 <script lang="ts" setup>
 import { deepToRaw } from "@/utils";
-import {
-  ref,
-  defineProps,
-  defineEmits,
-  toRaw,
-  onMounted,
-  onUnmounted,
-} from "vue";
+import { TaskStatusText, TaskStatus } from "../../consts.js";
+import { ref, defineProps, defineEmits, onMounted, onUnmounted } from "vue";
 const props = defineProps({
   qqAlbumList: {
     type: Array,
@@ -99,18 +120,28 @@ window.QQ.createDownloadAlbum(props.qunId, deepToRaw(props.qqAlbumList));
 const startDownload = () => {
   window.QQ.startDownloadAlbum();
   isStart.value = true;
+  getDownloadStatus()
 };
 const stopDownload = async (id?: string) => {
   window.QQ.stopDownloadAlbum(id);
-  isPause.value = true;
+  if (id == undefined) {
+    isPause.value = true;
+  }
+  getDownloadStatus()
 };
 const resumeDownload = async (id?: string) => {
   window.QQ.resumeDownloadAlbum(id);
-  isPause.value = false;
+  if (id == undefined) {
+    isPause.value = false;
+  }
+  getDownloadStatus()
 };
 const deleteDownload = async (id?: string) => {
   window.QQ.deleteDownloadAlbum(id);
-  emit("backPage");
+  if (id == undefined) {
+    emit("backPage");
+  }
+  getDownloadStatus()
 };
 const getDownloadStatus = async () => {
   const data = await window.QQ.getDownloadAlbumStatus();
@@ -121,21 +152,18 @@ const getDownloadStatus = async () => {
     }
   }
   if (isFinish) {
-    ElMessageBox.alert(
-      `所有相册下载完毕！`,
-      "信息提示",
-      {
-        confirmButtonText: "确认",
-        dangerouslyUseHTMLString: true,
-      }
-    );
-    stopDownload()
+    ElMessageBox.alert(`所有相册下载完毕！`, "信息提示", {
+      confirmButtonText: "确认",
+      dangerouslyUseHTMLString: true,
+    });
+    stopDownload();
     clearInterval(timer);
   }
   showList.value = data;
 };
 let timer: number | undefined = undefined;
 onMounted(() => {
+  getDownloadStatus();
   timer = setInterval(() => {
     getDownloadStatus();
   }, 1000);

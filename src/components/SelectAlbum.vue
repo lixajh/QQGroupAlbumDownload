@@ -31,23 +31,30 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { ref, defineProps, defineEmits, toRaw } from "vue";
+import { defineProps, defineEmits, toRaw } from "vue";
 // eslint-disable-next-line vue/no-setup-props-destructure
 const props = defineProps({
   qqAlbumList: {
     type: Array,
     required: true,
   },
+  selectAlbumList: {
+    type: Array,
+    required: true,
+  },
 });
-const emit = defineEmits(["backPage","getSelectAlbumList"]);
+const emit = defineEmits(["backPage", "setSelectAlbumList", "startDownload"]);
 const backPage = () => {
   emit("backPage");
 };
-const selectAlbumList = ref<Array<any>>([]);
 const handleSelectionChange = (val: any[]) => {
-  selectAlbumList.value = val;
+  emit("setSelectAlbumList", toRaw(val));
 };
 const startDownload = () => {
-  emit("getSelectAlbumList", toRaw(selectAlbumList.value));
+  if (props.selectAlbumList.length == 0) {
+    ElMessage.error("请选择下载相册!");
+    return;
+  }
+  emit("startDownload");
 };
 </script>

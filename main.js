@@ -1,5 +1,6 @@
 const { app, BrowserWindow, dialog } = require("electron");
-const { setCookies, setTk, setQQ } = require("./ipcMain");
+const { setCookies, setTk, setQQ } = require("./qqCore");
+const ipcMain = require("./ipcMain.js");
 const path = require("node:path");
 
 let loginWindow;

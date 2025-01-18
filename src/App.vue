@@ -22,8 +22,10 @@
     >
       <SelectAlbum
         :qqAlbumList="qqAlbumList"
-        @getSelectAlbumList="getSelectAlbumList"
+        :selectAlbumList="qqSelectAlbumList"
+        @setSelectAlbumList="setSelectAlbumList"
         @back-page="backGroup"
+        @startDownload="startDownload"
       ></SelectAlbum>
     </div>
 
@@ -65,17 +67,18 @@ const getQQAlbumList = (list: any) => {
   qqAlbumList.value = list;
   stepActive.value = 1;
 };
-const getSelectAlbumList = (list: any) => {
+const setSelectAlbumList = (list: any) => {
   qqSelectAlbumList.value = list;
-  stepActive.value = 2;
 };
+const startDownload=()=>{
+  stepActive.value = 2;
+}
 const backSelectAlbum = () => {
   stepActive.value = 1;
 };
 const backGroup = () => {
   stepActive.value = 0;
 };
-
 </script>
 
 <style lang="scss">
