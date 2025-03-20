@@ -108,6 +108,10 @@ function downloadFactory(userDir) {
     // eslint-disable-next-line no-async-promise-executor
     return new Promise(async (resolve, reject) => {
       name = filterFileName(name);
+      albumName = sanitizeFileName(albumName);
+      if (albumName.length == 0) {
+        albumName = generateAlbumName();
+      }
       const baseDir = path.join(userDir, "./" + albumName + "/");
       const fileName = path.join(userDir, "./" + albumName + "/" + name);
       await fsExtra.mkdirp(baseDir);
@@ -205,9 +209,26 @@ ipcMain?.handle("deleteDownloadAlbum", deleteDownloadAlbum);
 ipcMain?.handle("getDownloadAlbumStatus", getDownloadAlbumStatus);
 exports.getAlbumList = getAlbumList;
 exports.getPatchAlbum = getPatchAlbum;
-
+const sanitizeFileName = (fileName) => {
+  return fileName.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, "");
+};
 const filterFileName = (name) => {
   return name.match(/[0-9a-zA-Z/.]*/g).join("");
+};
+const generateAlbumName = () => {
+  // 定义随机字符池（包括字母和数字）
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let randomString = "";
+
+  // 生成 6 个随机字符
+  for (let i = 0; i < 6; i++) {
+    const randomIndex = Math.floor(Math.random() * chars.length);
+    randomString += chars[randomIndex];
+  }
+
+  // 返回【相册下载】+ 6 个随机字符
+  return `相册下载${randomString}`;
 };
 
 // 这部分涉及到下载功能
