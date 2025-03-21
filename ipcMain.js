@@ -4,6 +4,17 @@ const fsExtra = require("fs-extra");
 const path = require("path");
 const { TaskStatus } = require("./consts");
 const { getCookies, getQQ, getTk } = require("./qqCore");
+const CryptoJS = require("crypto-js");
+
+function getMD5FirstSixChars(input) {
+  // 计算 MD5 哈希值
+  const hash = CryptoJS.MD5(input).toString(CryptoJS.enc.Hex);
+
+  // 取前六位字符
+  const firstSixChars = hash.substring(0, 6);
+
+  return firstSixChars;
+}
 async function getAlbumList(event, qunId) {
   const url = `https://h5.qzone.qq.com/proxy/domain/u.photo.qzone.qq.com/cgi-bin/upp/qun_list_album_v2?g_tk=${getTk()}&callback=shine2_Callback&qunId=${qunId}&uin=${getQQ()}&start=0&num=1000&getMemberRole=1&inCharset=utf-8&outCharset=utf-8&source=qzone&attach_info=&callbackFun=shine2`;
   try {
@@ -104,13 +115,13 @@ let globalQueue;
 let download = async () => undefined;
 function downloadFactory(userDir) {
   // eslint-disable-next-line @typescript-eslint/no-empty-function
-  return async function (url, albumName, name) {
+  return async function (url, albumDirName, name) {
     // eslint-disable-next-line no-async-promise-executor
     return new Promise(async (resolve, reject) => {
       name = filterFileName(name);
-      albumName = sanitizeFileName(albumName);
+      let albumName = sanitizeFileName(albumDirName);
       if (albumName.length == 0) {
-        albumName = generateAlbumName();
+        albumName = generateAlbumName(albumDirName);
       }
       const baseDir = path.join(userDir, "./" + albumName + "/");
       const fileName = path.join(userDir, "./" + albumName + "/" + name);
@@ -215,18 +226,8 @@ const sanitizeFileName = (fileName) => {
 const filterFileName = (name) => {
   return name.match(/[0-9a-zA-Z/.]*/g).join("");
 };
-const generateAlbumName = () => {
-  // 定义随机字符池（包括字母和数字）
-  const chars =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  let randomString = "";
-
-  // 生成 6 个随机字符
-  for (let i = 0; i < 6; i++) {
-    const randomIndex = Math.floor(Math.random() * chars.length);
-    randomString += chars[randomIndex];
-  }
-
+const generateAlbumName = (albumDirName) => {
+  const randomString = getMD5FirstSixChars(albumDirName);
   // 返回【相册下载】+ 6 个随机字符
   return `相册下载${randomString}`;
 };
