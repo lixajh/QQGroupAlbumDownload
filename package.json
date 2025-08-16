@@ -1,6 +1,6 @@
 {
   "name": "qq-album-download",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "qq-album-download",
   "author": "lihengdao",
   "main": "main.js",
@@ -20,8 +20,8 @@
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
-    "electron-build-dev": "cross-env NODE_ENV=development npx electronmon ./main.js --log-level=3",
-    "electron-build-pro": "npx electronmon ./main.js --log-level=3",
+    "electron-build-dev": "cross-env  NODE_ENV=development electronmon ./main.js --log-level=3",
+    "electron-build-pro": "electronmon ./main.js --log-level=3",
     "pack": "electron-builder",
     "lint": "vue-cli-service lint"
   },
@@ -31,6 +31,7 @@
     "core-js": "^3.8.3",
     "crypto-js": "^4.2.0",
     "electron-reloader": "^1.2.3",
+    "electronmon": "^2.0.3",
     "element-plus": "^2.9.1",
     "fs-extra": "^11.2.0",
     "vue": "^3.2.13",

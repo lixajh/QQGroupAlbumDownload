@@ -1,36 +1,53 @@
 <template>
-  <div>
-    <div>请输入下载相册的QQ群号</div>
-    <div style="margin: 30px 0 50px">
-      <el-input
-        v-model="qqGroupNum"
-        style="width: 240px"
-        placeholder="请输入群号"
-        clearable
-      />
-    </div>
-    <div>
-      <el-button @click="submitqqGroupNum" style="width: 100%" type="primary"
-        >确认</el-button
-      >
-    </div>
-    <div style="margin-top:50px;">
-      <el-row>
-        <el-col :span="8"
-          ><el-link type="primary" @click="openGithub"
-            >开源地址</el-link
-          ></el-col
+  <div class="container">
+    <div style="max-width: 300px">
+      <div>请输入下载相册的QQ群号</div>
+      <div style="margin: 30px 0 50px">
+        <el-input
+          v-model="qqGroupNum"
+          style="width: 240px"
+          placeholder="请输入群号"
+          clearable
+        />
+      </div>
+      <div>
+        <el-button @click="submitqqGroupNum" style="width: 100%" type="primary"
+          >确认</el-button
         >
-        <el-col :span="8">
-          <el-link type="warning" @click="openDialog">作者寄语</el-link>
-        </el-col>
-        <el-col :span="8">
-          <el-link type="danger" @click="openDouyin">关注作者</el-link>
-        </el-col>
-      </el-row>
+      </div>
+      <div style="margin-top: 50px">
+        <el-row>
+          <el-col :span="8"
+            ><el-link type="primary" @click="openGithub"
+              >开源地址</el-link
+            ></el-col
+          >
+          <el-col :span="8">
+            <el-link type="warning" @click="openDialog">作者寄语</el-link>
+          </el-col>
+          <el-col :span="8">
+            <el-link type="danger" @click="openDouyin">关注作者</el-link>
+          </el-col>
+        </el-row>
+      </div>
+      <div
+        style="
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          margin-top: 20px;
+        "
+      >
+        <el-link :underline="false">作者 : 李恒道、chenyin626</el-link>
+      </div>
     </div>
-    <div style="display: flex;justify-content: center;align-items: center;margin-top: 20px;">
-      <el-link  :underline="false">作者 : 李恒道、chenyin626</el-link>
+    <div class="contribute-list">
+      <div>感谢 怪蜀黎小谢谢 打赏100元</div>
+    </div>
+    <div class="warning-tip">
+      警告:本软件完全免费，请勿从TG/软件商城其他途径购买!
+      <br />
+      由于属于开源软件，任何人都可以根据源码重新打包，除开源地址以外渠道无法保证安全性！
     </div>
   </div>
 </template>
@@ -48,8 +65,9 @@ const openDouyin = () => {
     "https://www.douyin.com/user/MS4wLjABAAAAhIaXhpH9u5PIAaYxHmvEYQQsmhwrL0TcXzKd3KYML3hW1_WntJWphdyfoUt0Nwha?from_tab_name=main"
   );
 };
-const openDialog=()=>{
-  ElMessageBox.alert(`
+const openDialog = () => {
+  ElMessageBox.alert(
+    `
   依托于曾经的上网小技巧<br/>
   我在QQ群与我的朋友们存储了大量的个人资料和照片<br/>
   QQ群相册因为战略性的转移从而维护不再频繁<br/>
@@ -61,13 +79,16 @@ const openDialog=()=>{
   进行上万次的点选<br/>
   于是该项目应运而生<br/>
   希望能帮助广大网友进行数据迁移<br/>
-  `, '作者寄语', {
-    // if you want to disable its autofocus
-    // autofocus: false,
-    confirmButtonText: '已读',
-    dangerouslyUseHTMLString: true,
-  })
-}
+  `,
+    "作者寄语",
+    {
+      // if you want to disable its autofocus
+      // autofocus: false,
+      confirmButtonText: "已读",
+      dangerouslyUseHTMLString: true,
+    }
+  );
+};
 const submitqqGroupNum = async () => {
   if (qqGroupNum.value == "") {
     ElMessage.error("请输入内容");
@@ -85,3 +106,22 @@ const submitqqGroupNum = async () => {
   emit("getQQAlbumList", data.data);
 };
 </script>
+<style scoped>
+.warning-tip {
+  margin-top: 10px;
+  color: red;
+  font-size: 14px;
+  line-height: 24px;
+}
+.container {
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+}
+.contribute-list {
+  margin: 10px 0;
+  font-size: 15px;
+  color: #0172a2;
+}
+</style>

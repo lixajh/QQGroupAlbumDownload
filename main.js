@@ -33,9 +33,9 @@ function createMainWindow() {
       preload: path.join(__dirname, "preload.js"),
     },
   });
-  if( process.env.NODE_ENV === "development"){
+  if (process.env.NODE_ENV === "development") {
     mainWindow.loadURL(mainURL);
-  }else{
+  } else {
     mainWindow.loadFile(mainURL);
   }
 

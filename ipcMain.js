@@ -78,6 +78,12 @@ async function getPatchAlbum(qunId, albumId, start) {
         for (const key in item.photourl) {
           picList.push(item.photourl[key]);
         }
+        const originPic = picList.find((i) => {
+          if (i.width === 0 && i.height === 0) {
+            return true
+          }
+          return false
+        })
         picList.sort((a, b) => {
           if (a.width !== b.width) {
             return b.width - a.width;
@@ -88,7 +94,7 @@ async function getPatchAlbum(qunId, albumId, start) {
           return b.enlarge_rate - a.enlarge_rate;
         });
         return {
-          photoURL: picList[0].url, //目前未遇到不存在
+          photoURL: (originPic || picList[0]).url, //目前未遇到不存在
           videoURL:
             item.videodata.actionurl == ""
               ? undefined
