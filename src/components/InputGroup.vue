@@ -1,19 +1,25 @@
 <template>
   <div class="container">
     <div style="max-width: 300px">
-      <div>请输入下载相册的QQ群号</div>
+      <div style="text-align: center; font-size: 18px; margin-bottom: 30px">配置已加载</div>
+      <div style="text-align: center; margin-bottom: 20px">正在自动获取相册列表...</div>
       <div style="margin: 30px 0 50px">
-        <el-input
-          v-model="qqGroupNum"
-          style="width: 240px"
-          placeholder="请输入群号"
-          clearable
-        />
+        <el-card style="width: 240px; margin: 0 auto">
+          <template #header>
+            <div class="card-header">
+              <span>当前配置</span>
+            </div>
+          </template>
+          <div style="text-align: left; padding: 10px 0">
+            <div>群号: {{ config?.qqGroupNumber || '加载中...' }}</div>
+            <div>下载路径: {{ config?.downloadPath || '加载中...' }}</div>
+          </div>
+        </el-card>
       </div>
       <div>
-        <el-button @click="submitqqGroupNum" style="width: 100%" type="primary"
-          >确认</el-button
-        >
+        <el-button @click="refreshAlbumList" style="width: 100%" type="primary">
+          刷新相册列表
+        </el-button>
       </div>
       <div style="margin-top: 50px">
         <el-row>
@@ -52,11 +58,29 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { defineModel, defineEmits } from "vue";
-const qqGroupNum = defineModel<string>("qqGroupNum", {
-  required: true,
+import { ref, onMounted, defineEmits } from "vue";
+import { ElMessage } from 'element-plus';
+import { ElMessageBox } from 'element-plus';
+const config = ref<any>(null);
+const emit = defineEmits(["getQQAlbumList", "refreshAlbumList"]);
+
+// 加载配置信息
+const loadConfigInfo = async () => {
+  console.log('InputGroup: 开始加载配置信息');
+  try {
+    const configInfo = await window.QQ.getConfigInfo();
+    console.log('InputGroup: 配置信息加载成功:', configInfo);
+    config.value = configInfo;
+  } catch (error) {
+    console.error('InputGroup: 加载配置信息失败:', error);
+    ElMessage.error('加载配置信息失败');
+  }
+};
+
+onMounted(() => {
+  console.log('InputGroup组件挂载完成，开始加载配置');
+  loadConfigInfo();
 });
-const emit = defineEmits(["getQQAlbumList"]);
 const openGithub = () => {
   window.QQ.openPage("https://github.com/lihengdao666/QQGroupAlbumDownload");
 };
@@ -89,21 +113,13 @@ const openDialog = () => {
     }
   );
 };
-const submitqqGroupNum = async () => {
-  if (qqGroupNum.value == "") {
-    ElMessage.error("请输入内容");
-    return;
-  }
-  if (qqGroupNum.value.match(/[^0-9]/g) !== null) {
-    ElMessage.error("请输入正确的群号");
-    return;
-  }
-  const data = await window.QQ.getAlbumList(qqGroupNum.value);
-  if (data.status === "error") {
-    ElMessage.error(data.msg);
-    return;
-  }
-  emit("getQQAlbumList", data.data);
+// 手动刷新配置和相册列表
+const refreshAlbumList = async () => {
+  console.log('InputGroup: 刷新按钮被点击，开始刷新配置和相册列表');
+  ElMessage({ message: '正在刷新配置...', type: 'info' });
+  await loadConfigInfo();
+  console.log('InputGroup: 配置刷新完成，触发refreshAlbumList事件通知父组件');
+  emit('refreshAlbumList');
 };
 </script>
 <style scoped>

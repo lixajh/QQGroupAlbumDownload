@@ -5,6 +5,9 @@ const path = require("path");
 const { TaskStatus } = require("./consts");
 const { getCookies, getQQ, getTk } = require("./qqCore");
 const CryptoJS = require("crypto-js");
+const fs = require('fs');
+// 引入配置文件
+const config = require('./config');
 
 function getMD5FirstSixChars(input) {
   // 计算 MD5 哈希值
@@ -15,21 +18,69 @@ function getMD5FirstSixChars(input) {
 
   return firstSixChars;
 }
+
+// 获取配置信息
+async function getConfigInfo(event) {
+  console.log('ipcMain: getConfigInfo被调用，开始获取配置信息');
+  try {
+    const configInfo = {
+      qqGroupNumber: config.qqGroupNumber,
+      downloadPath: config.downloadPath
+    };
+    console.log('ipcMain: 配置信息获取成功:', configInfo);
+    return configInfo;
+  } catch (error) {
+    console.error('ipcMain: 获取配置信息失败:', error);
+    return { error: error.message };
+  }
+}
+
+// 处理前端发送的日志
+ipcMain.handle('sendLogToMain', async (event, message, level = 'info', data = null) => {
+  try {
+    const timestamp = new Date().toISOString();
+    let logMessage = `[${timestamp}] [Frontend] [${level.toUpperCase()}] ${message}`;
+    
+    if (data) {
+      try {
+        logMessage += `\nData: ${JSON.stringify(data, null, 2)}`;
+      } catch (e) {
+        logMessage += `\nData: [Cannot stringify data]`;
+      }
+    }
+    
+    // 打印到主进程控制台，会被重定向到app.log
+    console[level](logMessage);
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error handling frontend log:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 async function getAlbumList(event, qunId) {
+  console.log('ipcMain: getAlbumList被调用，群号:', qunId);
   const url = `https://h5.qzone.qq.com/proxy/domain/u.photo.qzone.qq.com/cgi-bin/upp/qun_list_album_v2?g_tk=${getTk()}&callback=shine2_Callback&qunId=${qunId}&uin=${getQQ()}&start=0&num=1000&getMemberRole=1&inCharset=utf-8&outCharset=utf-8&source=qzone&attach_info=&callbackFun=shine2`;
   try {
+    console.log('ipcMain: 准备发送HTTP请求获取相册列表，URL:', url);
     const { data } = await axios.get(url, {
       headers: {
         Cookie: getCookies(),
       },
     });
+    console.log('ipcMain: HTTP请求返回成功，开始处理相册数据');
+    
     if (data.indexOf("对不起，您") !== -1) {
+      console.log('ipcMain: 访问权限检查失败，返回无访问权限错误');
       return {
         status: "error",
         msg: "无访问权限",
       };
     }
-    let list =
+    
+    console.log('ipcMain: 开始解析相册数据');
+    let list = 
       new Function("", "const shine2_Callback=a=>a;return " + data)().data
         .album ?? [];
 
@@ -42,12 +93,15 @@ async function getAlbumList(event, qunId) {
         };
       })
       .filter((item) => item.num != 0);
+      
+    console.log('ipcMain: 相册数据解析完成，共获取到', list.length, '个有效相册');
+        console.log('ipcMain: 相册数据详细结构:', JSON.stringify(list, null, 2));
     return {
       status: "success",
       data: list,
     };
   } catch (error) {
-    console.log(error);
+    console.error('ipcMain: 获取相册列表发生异常:', error);
 
     return {
       status: "error",
@@ -185,15 +239,25 @@ async function createDownloadAlbum(event, qunId, arr) {
   }
   return true;
 }
+
 async function startDownloadAlbum() {
-  const showDialog = await dialog.showOpenDialog({
-    properties: ["openDirectory"],
-  });
-  if (showDialog.filePaths.length == 0) {
+  try {
+    // 从配置文件读取下载路径
+    const downloadPath = config.downloadPath;
+    
+    // 检查下载路径是否存在，如果不存在则创建
+    if (!fs.existsSync(downloadPath)) {
+      fs.mkdirSync(downloadPath, { recursive: true });
+    }
+    
+    download = downloadFactory(downloadPath);
+    globalQueue?.run();
+    return true;
+  } catch (error) {
+    console.error('下载路径配置错误:', error);
+    dialog.showErrorBox('配置错误', `下载路径配置错误: ${error.message}`);
     return false;
   }
-  download = downloadFactory(showDialog.filePaths[0]);
-  globalQueue?.run();
 }
 
 async function stopDownloadAlbum(event, id) {
@@ -217,6 +281,7 @@ async function getDownloadAlbumStatus() {
   return globalQueue?.getAllStatus() ?? [];
 }
 ipcMain?.handle("getAlbumList", getAlbumList);
+ipcMain?.handle("getConfigInfo", getConfigInfo);
 ipcMain?.handle("createDownloadAlbum", createDownloadAlbum);
 ipcMain?.handle("startDownloadAlbum", startDownloadAlbum);
 ipcMain?.handle("stopDownloadAlbum", stopDownloadAlbum);
@@ -226,6 +291,7 @@ ipcMain?.handle("deleteDownloadAlbum", deleteDownloadAlbum);
 ipcMain?.handle("getDownloadAlbumStatus", getDownloadAlbumStatus);
 exports.getAlbumList = getAlbumList;
 exports.getPatchAlbum = getPatchAlbum;
+exports.getConfigInfo = getConfigInfo;
 const sanitizeFileName = (fileName) => {
   return fileName.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, "");
 };

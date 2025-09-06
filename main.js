@@ -38,6 +38,9 @@ function createMainWindow() {
   } else {
     mainWindow.loadFile(mainURL);
   }
+  
+  // 自动打开开发者工具，方便调试
+  mainWindow.webContents.openDevTools();
 
 
   mainWindow.on("closed", function () {

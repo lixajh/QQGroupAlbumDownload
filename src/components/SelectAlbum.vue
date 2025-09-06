@@ -2,6 +2,13 @@
   <div
     style="display: flex; flex: 1 1 0; flex-direction: column; overflow: hidden"
   >
+    <!-- 显示相册数据结构 -->
+    <div style="padding: 10px; background: #f0f0f0; margin-bottom: 10px;">
+      <h3>SelectAlbum组件接收到的数据</h3>
+      <p>数据长度: {{ props.qqAlbumList?.length || 0 }}</p>
+      <p v-if="props.qqAlbumList?.length > 0">第一条数据结构: {{ JSON.stringify(props.qqAlbumList[0]) }}</p>
+    </div>
+    
     <el-scrollbar height="100%">
       <el-table
         ref="multipleTableRef"
@@ -12,6 +19,12 @@
         <el-table-column align="center" type="selection" />
         <el-table-column align="center" prop="title" label="名称" />
         <el-table-column align="center" prop="num" label="数量" />
+        <!-- 为了调试，显示所有可能的属性 -->
+        <el-table-column align="center" label="所有数据">
+          <template #default="scope">
+            {{ JSON.stringify(scope.row) }}
+          </template>
+        </el-table-column>
       </el-table>
     </el-scrollbar>
   </div>
@@ -34,6 +47,7 @@
 <script lang="ts" setup>
 import { defineProps, defineEmits, toRaw, ref, onMounted } from "vue";
 import type { TableInstance } from "element-plus";
+import { ElMessage } from 'element-plus';
 // eslint-disable-next-line vue/no-setup-props-destructure
 const props = defineProps({
   qqAlbumList: {
@@ -47,6 +61,8 @@ const props = defineProps({
 });
 const multipleTableRef = ref<TableInstance>();
 onMounted(() => {
+  console.log('SelectAlbum组件挂载完成，接收到的相册列表:', props.qqAlbumList);
+  console.log('相册列表长度:', props.qqAlbumList?.length || 0);
   props.selectAlbumList.forEach((item) => {
       multipleTableRef.value?.toggleRowSelection(
         item,
