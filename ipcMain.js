@@ -8,6 +8,7 @@ const CryptoJS = require("crypto-js");
 const fs = require('fs');
 // 引入配置文件
 const config = require('./config');
+const { clearLoginInfo } = require('./qqCore');
 
 function getMD5FirstSixChars(input) {
   // 计算 MD5 哈希值
@@ -280,6 +281,18 @@ async function deleteDownloadAlbum(event, id) {
 async function getDownloadAlbumStatus() {
   return globalQueue?.getAllStatus() ?? [];
 }
+
+// 清除登录信息
+async function handleClearLoginInfo() {
+  try {
+    clearLoginInfo();
+    console.log('登录信息已清除');
+    return { success: true };
+  } catch (error) {
+    console.error('清除登录信息失败:', error);
+    return { success: false, error: error.message };
+  }
+}
 ipcMain?.handle("getAlbumList", getAlbumList);
 ipcMain?.handle("getConfigInfo", getConfigInfo);
 ipcMain?.handle("createDownloadAlbum", createDownloadAlbum);
@@ -289,6 +302,7 @@ ipcMain?.handle("resumeDownloadAlbum", resumeDownloadAlbum);
 ipcMain?.handle("openPage", openPage);
 ipcMain?.handle("deleteDownloadAlbum", deleteDownloadAlbum);
 ipcMain?.handle("getDownloadAlbumStatus", getDownloadAlbumStatus);
+ipcMain?.handle("clearLoginInfo", handleClearLoginInfo);
 exports.getAlbumList = getAlbumList;
 exports.getPatchAlbum = getPatchAlbum;
 exports.getConfigInfo = getConfigInfo;

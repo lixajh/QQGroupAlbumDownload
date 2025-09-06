@@ -1,5 +1,5 @@
 const { app, BrowserWindow, dialog } = require("electron");
-const { setCookies, setTk, setQQ } = require("./qqCore");
+const { setCookies, setTk, setQQ, isLoggedIn, getCookies, getTk, getQQ } = require("./qqCore");
 require("./ipcMain.js");
 const path = require("node:path");
 
@@ -97,12 +97,36 @@ function createWindow() {
   });
 }
 
-app.whenReady().then(createWindow);
+// 应用启动时检查是否已登录
+app.whenReady().then(() => {
+  // 检查是否有有效的登录信息
+  if (isLoggedIn()) {
+    console.log('检测到有效的登录信息，直接进入主界面');
+    dialog.showMessageBox({
+      type: "info",
+      title: "自动登录",
+      message: "检测到有效的登录信息，正在自动登录...",
+      buttons: ["确定"]
+    }).then(() => {
+      createMainWindow();
+    });
+  } else {
+    // 如果没有有效的登录信息，显示登录窗口
+    console.log('没有检测到有效的登录信息，显示登录窗口');
+    createWindow();
+  }
+});
 
 app.on("window-all-closed", function () {
   if (process.platform !== "darwin") app.quit();
 });
 
 app.on("activate", function () {
-  if (loginWindow === null && mainWindow == null) createWindow();
+  if (loginWindow === null && mainWindow == null) {
+    if (isLoggedIn()) {
+      createMainWindow();
+    } else {
+      createWindow();
+    }
+  }
 });
