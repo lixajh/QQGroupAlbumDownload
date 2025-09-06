@@ -29,7 +29,7 @@ function createMainWindow() {
     title: "控制中心",
     autoHideMenuBar: true,
     webPreferences: {
-      devTools: true,
+      devTools: false,
       preload: path.join(__dirname, "preload.js"),
     },
   });
@@ -38,12 +38,8 @@ function createMainWindow() {
   } else {
     mainWindow.loadFile(mainURL);
   }
-  
-  // 自动打开开发者工具，方便调试
-  mainWindow.webContents.openDevTools();
-
-
-  mainWindow.on("closed", function () {
+    
+    mainWindow.on("closed", function () {
     loginWindow = null;
   });
 }

@@ -17,16 +17,6 @@
         overflow: hidden;
       "
     >
-      <!-- 调试信息：直接显示相册列表数据 -->
-      <div style="padding: 10px; background: #f0f0f0; margin-bottom: 10px;">
-        <h3>调试信息</h3>
-        <p>相册列表长度: {{ qqAlbumList.length }}</p>
-        <pre>{{ JSON.stringify(qqAlbumList, null, 2) }}</pre>
-        <el-button @click="manualRefreshAlbumList" type="primary" style="margin-top: 10px;">手动刷新相册列表</el-button>
-        <el-button @click="testConsoleLog" type="info" style="margin-top: 10px; margin-left: 10px;">测试Console.log</el-button>
-        <p style="color: #666; margin-top: 10px;">提示：按F12打开开发者工具，在Console选项卡查看日志输出</p>
-      </div>
-      
       <SelectAlbum
         :qqAlbumList="qqAlbumList"
         :selectAlbumList="qqSelectAlbumList"
@@ -76,59 +66,43 @@ const qqSelectAlbumList = ref<any[]>([]);
 
 // 从配置文件获取QQ群号和下载路径
 onMounted(async () => {
-  console.log('App组件挂载完成，开始获取配置信息');
   try {
     // 从主进程获取配置信息
-    console.log('正在调用window.QQ.getConfigInfo()');
     const config = await window.QQ.getConfigInfo();
-    console.log('配置信息获取成功:', config);
     
     if (config && config.qqGroupNumber) {
       qqGroupNum.value = config.qqGroupNumber;
       downloadPath.value = config.downloadPath;
-      console.log('配置已更新，群号:', qqGroupNum.value, '下载路径:', downloadPath.value);
       
       // 自动获取相册列表
-      console.log('开始自动获取相册列表');
       await getQQAlbumListFromConfig();
     } else {
-      console.error('配置文件读取失败或配置不完整');
       ElMessage.error('配置文件读取失败或配置不完整，请检查config.js文件');
     }
   } catch (error) {
-    console.error('获取配置信息失败:', error);
     ElMessage.error('获取配置信息失败');
   }
 });
 
 // 从配置的QQ群号获取相册列表
 const getQQAlbumListFromConfig = async () => {
-  console.log('getQQAlbumListFromConfig函数开始执行');
   try {
     if (!qqGroupNum.value) {
-      console.error('QQ群号为空，无法获取相册列表');
       ElMessage.error('QQ群号为空，请在config.js中配置');
       return;
     }
     
-    console.log('正在调用window.QQ.getAlbumList()获取群相册列表，群号:', qqGroupNum.value);
     const data = await window.QQ.getAlbumList(qqGroupNum.value);
-    console.log('相册列表获取结果:', data);
     
     if (data.status === 'error') {
-      console.error('获取相册列表失败:', data.msg);
       ElMessage.error(data.msg);
       return;
     }
     
     qqAlbumList.value = data.data;
-    console.log('相册列表数据详情:', JSON.stringify(qqAlbumList.value, null, 2));
-    console.log('相册列表长度:', qqAlbumList.value?.length || 0);
     stepActive.value = 1;
     qqSelectAlbumList.value = [];
-    console.log('相册列表获取成功，已跳转到相册选择页面，当前stepActive:', stepActive.value);
   } catch (error) {
-    console.error('获取相册列表发生异常:', error);
     ElMessage.error('获取相册列表失败');
   }
 };
@@ -153,25 +127,6 @@ const backSelectAlbum = () => {
 
 const backGroup = () => {
   stepActive.value = 0;
-};
-
-// 手动刷新相册列表
-const manualRefreshAlbumList = async () => {
-  try {
-    console.log('手动刷新相册列表');
-    await getQQAlbumListFromConfig();
-    ElMessage.success('相册列表刷新成功');
-  } catch (error) {
-    console.error('手动刷新相册列表失败:', error);
-    ElMessage.error('相册列表刷新失败');
-  }
-};
-
-// 测试console.log输出
-const testConsoleLog = () => {
-  console.log('这是一个测试日志 - 时间:', new Date().toLocaleTimeString());
-  console.log('当前相册列表数据:', qqAlbumList.value);
-  ElMessage.info('日志已输出到开发者工具的Console选项卡');
 };
 </script>
 
