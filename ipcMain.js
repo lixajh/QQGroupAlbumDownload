@@ -3,7 +3,7 @@ const { ipcMain, dialog, shell } = require("electron");
 const fsExtra = require("fs-extra");
 const path = require("path");
 const { TaskStatus } = require("./consts");
-const { getCookies, getQQ, getTk } = require("./qqCore");
+const { getCookies, getQQ, getTk, isLoginExpired } = require("./qqCore");
 const CryptoJS = require("crypto-js");
 const fs = require('fs');
 const { exec } = require('child_process');
@@ -63,21 +63,76 @@ ipcMain.handle('sendLogToMain', async (event, message, level = 'info', data = nu
 
 async function getAlbumList(event, qunId) {
   console.log('ipcMain: getAlbumList被调用，群号:', qunId);
-  const url = `https://h5.qzone.qq.com/proxy/domain/u.photo.qzone.qq.com/cgi-bin/upp/qun_list_album_v2?g_tk=${getTk()}&callback=shine2_Callback&qunId=${qunId}&uin=${getQQ()}&start=0&num=1000&getMemberRole=1&inCharset=utf-8&outCharset=utf-8&source=qzone&attach_info=&callbackFun=shine2`;
+  
+  // 检查登录信息有效性
+  const currentTk = getTk();
+  const currentQQ = getQQ();
+  const currentCookies = getCookies();
+  
+  console.log('ipcMain: 检查当前登录信息:');
+  console.log('ipcMain: QQ号:', currentQQ || '不存在');
+  console.log('ipcMain: TK值:', currentTk ? '存在' : '不存在');
+  console.log('ipcMain: Cookie长度:', currentCookies ? currentCookies.length : 0);
+  console.log('ipcMain: 登录是否过期:', isLoginExpired() ? '是' : '否');
+  
+  // 如果登录信息不完整，提前返回错误
+  if (!currentTk || !currentQQ || !currentCookies) {
+    console.error('ipcMain: 登录信息不完整，无法获取相册列表');
+    return {
+      status: "error",
+      msg: "登录信息不完整，请重新登录",
+      details: {
+        missingTk: !currentTk,
+        missingQQ: !currentQQ,
+        missingCookies: !currentCookies,
+        isExpired: isLoginExpired()
+      }
+    };
+  }
+  
+  const url = `https://h5.qzone.qq.com/proxy/domain/u.photo.qzone.qq.com/cgi-bin/upp/qun_list_album_v2?g_tk=${currentTk}&callback=shine2_Callback&qunId=${qunId}&uin=${currentQQ}&start=0&num=1000&getMemberRole=1&inCharset=utf-8&outCharset=utf-8&source=qzone&attach_info=&callbackFun=shine2`;
+  
   try {
     console.log('ipcMain: 准备发送HTTP请求获取相册列表，URL:', url);
+    console.log('ipcMain: 请求头Cookie长度:', currentCookies.length);
+    
+    const startTime = Date.now();
     const { data } = await axios.get(url, {
       headers: {
-        Cookie: getCookies(),
+        Cookie: currentCookies,
       },
+      timeout: 30000, // 30秒超时
     });
-    console.log('ipcMain: HTTP请求返回成功，开始处理相册数据');
     
+    const endTime = Date.now();
+    console.log(`ipcMain: HTTP请求返回成功，耗时: ${endTime - startTime}ms`);
+    
+    // 记录返回数据的前200个字符，避免日志过大
+    const previewData = data.length > 200 ? data.substring(0, 200) + '...' : data;
+    console.log('ipcMain: 返回数据预览:', previewData);
+    
+    // 检查访问权限
     if (data.indexOf("对不起，您") !== -1) {
-      console.log('ipcMain: 访问权限检查失败，返回无访问权限错误');
+      console.error('ipcMain: 访问权限检查失败，返回无访问权限错误');
+      
+      // 尝试定位具体的错误信息
+      let errorMsg = "无访问权限";
+      if (data.indexOf("无权访问") !== -1) {
+        errorMsg = "您没有权限访问该群相册";
+      } else if (data.indexOf("登录") !== -1) {
+        errorMsg = "登录已失效，请重新登录";
+      } else if (data.indexOf("不存在") !== -1) {
+        errorMsg = "该群或相册不存在";
+      }
+      
+      console.log('ipcMain: 详细错误信息:', errorMsg);
       return {
         status: "error",
-        msg: "无访问权限",
+        msg: errorMsg,
+        details: {
+          rawResponse: previewData,
+          isLoginExpired: isLoginExpired()
+        }
       };
     }
     

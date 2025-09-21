@@ -1,7 +1,8 @@
-const { app, BrowserWindow, dialog } = require("electron");
-const { setCookies, setTk, setQQ, isLoggedIn, getCookies, getTk, getQQ } = require("./qqCore");
+const { app, BrowserWindow, dialog } = require('electron');
+const { setCookies, setTk, setQQ, isLoggedIn, getCookies, getTk, getQQ, isLoginExpired } = require("./qqCore");
 require("./ipcMain.js");
 const path = require("node:path");
+const os = require('os');
 
 let loginWindow;
 let mainWindow;
@@ -99,20 +100,39 @@ function createWindow() {
 
 // 应用启动时检查是否已登录
 app.whenReady().then(() => {
+  console.log('应用启动，开始检查登录状态');
+  
+  // 详细检查登录状态
+  console.log('当前登录信息概览:');
+  console.log('QQ号:', getQQ() ? getQQ() : '不存在');
+  console.log('Cookie状态:', getCookies() ? '存在' : '不存在');
+  console.log('TK状态:', getTk() ? '存在' : '不存在');
+  
   // 检查是否有有效的登录信息
   if (isLoggedIn()) {
-    console.log('检测到有效的登录信息，直接进入主界面');
+    console.log('主程序检测到有效的登录信息，直接进入主界面');
+    
+    // 显示登录信息详情对话框
     dialog.showMessageBox({
       type: "info",
       title: "自动登录",
       message: "检测到有效的登录信息，正在自动登录...",
+      detail: `QQ号: ${getQQ() || '未知'}\n登录状态: 有效\n系统: ${os.platform()} ${os.arch()}`,
       buttons: ["确定"]
     }).then(() => {
       createMainWindow();
     });
   } else {
     // 如果没有有效的登录信息，显示登录窗口
-    console.log('没有检测到有效的登录信息，显示登录窗口');
+    console.log('主程序没有检测到有效的登录信息，显示登录窗口');
+    
+    // 检查登录失效的具体原因
+    if (isLoginExpired()) {
+      console.log('登录失效原因: 登录信息已过期或不完整');
+    } else {
+      console.log('登录失效原因: 缺少必要的登录信息');
+    }
+    
     createWindow();
   }
 });
