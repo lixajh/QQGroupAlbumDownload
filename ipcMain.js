@@ -6,6 +6,7 @@ const { TaskStatus } = require("./consts");
 const { getCookies, getQQ, getTk } = require("./qqCore");
 const CryptoJS = require("crypto-js");
 const fs = require('fs');
+const { exec } = require('child_process');
 // 引入配置文件
 const config = require('./config');
 const { clearLoginInfo } = require('./qqCore');
@@ -293,6 +294,29 @@ async function handleClearLoginInfo() {
     return { success: false, error: error.message };
   }
 }
+
+// 执行人脸过滤脚本
+function runFaceFilter(sourceDir, targetDir) {
+  return new Promise((resolve, reject) => {
+    const pythonScript = path.join(__dirname, 'face_filter.py');
+    const command = `python3 "${pythonScript}" "${sourceDir}" "${targetDir}"`;
+    
+    console.log(`正在执行人脸过滤: ${command}`);
+    
+    exec(command, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`人脸过滤执行失败: ${error.message}`);
+        reject(error);
+        return;
+      }
+      if (stderr) {
+        console.error(`人脸过滤脚本错误输出: ${stderr}`);
+      }
+      console.log(`人脸过滤执行成功: ${stdout}`);
+      resolve(stdout);
+    });
+  });
+}
 ipcMain?.handle("getAlbumList", getAlbumList);
 ipcMain?.handle("getConfigInfo", getConfigInfo);
 ipcMain?.handle("createDownloadAlbum", createDownloadAlbum);
@@ -548,6 +572,27 @@ class AlbumTask {
     } else if (this.runStatus == TaskStatus.RUN) {
       // 回调完成
       this.runStatus = TaskStatus.FINISH;
+      
+      // 如果配置了自动人脸过滤，则执行
+      if (config.autoFaceFilter && config.faceFilterTargetDir) {
+        const albumDir = path.join(config.downloadPath, this.title);
+        const targetDir = path.join(config.faceFilterTargetDir, this.title);
+        
+        // 确保目标目录存在
+        fsExtra.ensureDir(targetDir)
+          .then(() => {
+            runFaceFilter(albumDir, targetDir)
+              .then(() => {
+                console.log(`相册${this.title}人脸过滤完成`);
+              })
+              .catch(error => {
+                console.error(`相册${this.title}人脸过滤失败:`, error);
+              });
+          })
+          .catch(error => {
+            console.error(`创建目标目录失败:`, error);
+          });
+      }
     }
     return true;
   }
