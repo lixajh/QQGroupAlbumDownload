@@ -7,9 +7,11 @@ const { getCookies, getQQ, getTk, isLoginExpired } = require("./qqCore");
 const CryptoJS = require("crypto-js");
 const fs = require('fs');
 const { exec } = require('child_process');
-// 引入配置文件
+// 导入配置文件
 const config = require('./config');
 const { clearLoginInfo } = require('./qqCore');
+// 从faceFilter模块导入runFaceFilter函数并重命名为jsRunFaceFilter
+const { runFaceFilter: jsRunFaceFilter } = require('./faceFilter');
 
 function getMD5FirstSixChars(input) {
   // 计算 MD5 哈希值
@@ -228,6 +230,7 @@ async function getPatchAlbum(qunId, albumId, start) {
   }
 }
 let globalQueue;
+let faceFilterQueue;
 
 let download = async () => undefined;
 function downloadFactory(userDir) {
@@ -338,6 +341,41 @@ async function getDownloadAlbumStatus() {
   return globalQueue?.getAllStatus() ?? [];
 }
 
+// 人脸过滤相关函数
+async function createFaceFilterTask(albumId, title, sourceDir, targetDir, total) {
+  if (!faceFilterQueue) {
+    faceFilterQueue = new queue();
+  }
+  const task = new FaceFilterTask(albumId, title, sourceDir, targetDir, total);
+  faceFilterQueue.addTask(task);
+  return task.getSingleID();
+}
+
+async function startFaceFilterQueue() {
+  if (faceFilterQueue) {
+    faceFilterQueue.run();
+  }
+}
+
+async function stopFaceFilter(event, id) {
+  if (faceFilterQueue) {
+    const task = faceFilterQueue.taskList.find(t => t.getSingleID() === id);
+    if (task) {
+      await task.stop();
+      await faceFilterQueue.delete(id);
+    }
+  }
+}
+
+async function deleteFaceFilter(event, id) {
+  if (faceFilterQueue) {
+    await faceFilterQueue.delete(id);
+  }
+}
+
+async function getFaceFilterStatus() {
+  return faceFilterQueue?.getAllStatus() ?? [];
+}
 // 清除登录信息
 async function handleClearLoginInfo() {
   try {
@@ -350,26 +388,22 @@ async function handleClearLoginInfo() {
   }
 }
 
-// 执行人脸过滤脚本
+// 导入JavaScript版的人脸过滤模块 - 已在文件顶部导入
+
+// 执行人脸过滤
 function runFaceFilter(sourceDir, targetDir) {
   return new Promise((resolve, reject) => {
-    const pythonScript = path.join(__dirname, 'face_filter.py');
-    const command = `python3 "${pythonScript}" "${sourceDir}" "${targetDir}"`;
+    console.log(`[人脸过滤] 开始执行JS版人脸过滤: 源目录=${sourceDir}, 目标目录=${targetDir}`);
     
-    console.log(`正在执行人脸过滤: ${command}`);
-    
-    exec(command, (error, stdout, stderr) => {
-      if (error) {
-        console.error(`人脸过滤执行失败: ${error.message}`);
+    jsRunFaceFilter(sourceDir, targetDir)
+      .then(result => {
+        console.log(`[人脸过滤] JS版人脸过滤执行成功: 处理了${result.processed}个文件, 匹配了${result.matched}个文件`);
+        resolve(`处理完成: ${result.processed}个文件, ${result.matched}个匹配`);
+      })
+      .catch(error => {
+        console.error(`[人脸过滤] JS版人脸过滤执行失败: ${error.message}`);
         reject(error);
-        return;
-      }
-      if (stderr) {
-        console.error(`人脸过滤脚本错误输出: ${stderr}`);
-      }
-      console.log(`人脸过滤执行成功: ${stdout}`);
-      resolve(stdout);
-    });
+      });
   });
 }
 ipcMain?.handle("getAlbumList", getAlbumList);
@@ -382,6 +416,10 @@ ipcMain?.handle("openPage", openPage);
 ipcMain?.handle("deleteDownloadAlbum", deleteDownloadAlbum);
 ipcMain?.handle("getDownloadAlbumStatus", getDownloadAlbumStatus);
 ipcMain?.handle("clearLoginInfo", handleClearLoginInfo);
+// 人脸过滤相关的IPC处理函数
+ipcMain?.handle("getFaceFilterStatus", getFaceFilterStatus);
+ipcMain?.handle("stopFaceFilter", stopFaceFilter);
+ipcMain?.handle("deleteFaceFilter", deleteFaceFilter);
 exports.getAlbumList = getAlbumList;
 exports.getPatchAlbum = getPatchAlbum;
 exports.getConfigInfo = getConfigInfo;
@@ -523,6 +561,126 @@ class queue {
     return list;
   }
 }
+
+// 人脸过滤任务类
+class FaceFilterTask {
+  albumId = "";
+  title = "";
+  total = 0;
+  success = 0;
+  fail = 0;
+  runStatus = "wating";
+  waitResolve = null;
+  runCallback = null;
+  currentFile = "";
+  sourceDir = "";
+  targetDir = "";
+  isStopped = false;
+
+  constructor(albumId, title, sourceDir, targetDir, total) {
+    this.albumId = albumId;
+    this.title = title;
+    this.sourceDir = sourceDir;
+    this.targetDir = targetDir;
+    this.total = total;
+  }
+  getSingleID() {
+    return `filter_${this.albumId}`;
+  }
+
+  async pause() {
+    return new Promise((resolve) => {
+      if (this.runStatus != "run") {
+        resolve();
+      } else {
+        this.runStatus = "pause";
+        this.waitResolve = resolve;
+      }
+    });
+  }
+
+  async resume() {
+    if (this.runStatus == "pause") {
+      this.runStatus = "wating";
+    }
+  }
+
+  async stop() {
+    this.isStopped = true;
+    await this.pause();
+  }
+
+  isRun() {
+    return this.runStatus == "run";
+  }
+
+  async registerRun(callback) {
+    this.runCallback = callback;
+    await this.run();
+    if (this.runCallback) {
+      this.runCallback();
+      this.runCallback = undefined;
+    }
+  }
+
+  async run() {
+    if (this.runStatus != "wating" || this.isStopped) {
+      return false;
+    }
+    this.runStatus = "run";
+    
+    try {
+      await jsRunFaceFilter(this.sourceDir, this.targetDir, { 
+        onFileProcessed: (fileName, success) => {
+          this.currentFile = fileName;
+          if (success) {
+            this.success++;
+          } else {
+            this.fail++;
+          }
+        },
+        onProgress: (current, total) => {
+          // 进度回调，可用于更详细的进度显示
+        },
+        shouldStop: () => this.isStopped || this.runStatus !== "run"
+      });
+      
+      if (!this.isStopped && this.runStatus === "run") {
+        this.runStatus = "finish";
+      }
+    } catch (error) {
+      console.error(`人脸过滤任务${this.title}执行失败:`, error);
+      if (!this.isStopped) {
+        this.runStatus = "error";
+      }
+    }
+
+    if (this.runStatus === "pause") {
+      this.waitResolve();
+    }
+  }
+
+  getStatus() {
+    let showText = "";
+    if (this.runStatus === "run") {
+      showText = `处理中: ${this.currentFile} (${this.success}/${this.total})`;
+    } else if (this.success == 0 && this.fail == 0) {
+      showText = `等待中`;
+    } else {
+      showText = `成功:${this.success} 失败:${this.fail}`;
+    }
+    return {
+      id: `filter_${this.albumId}`,
+      num: this.total,
+      fail: this.fail,
+      success: this.success,
+      status: this.runStatus,
+      title: `[人脸识别]${this.title}`,
+      showText: showText,
+      type: 'filter'
+    };
+  }
+}
 class AlbumTask {
   list = [];
   qunId;
@@ -633,20 +791,25 @@ class AlbumTask {
         const albumDir = path.join(config.downloadPath, this.title);
         const targetDir = path.join(config.faceFilterTargetDir, this.title);
         
-        // 确保目标目录存在
-        fsExtra.ensureDir(targetDir)
-          .then(() => {
-            runFaceFilter(albumDir, targetDir)
-              .then(() => {
-                console.log(`相册${this.title}人脸过滤完成`);
-              })
-              .catch(error => {
-                console.error(`相册${this.title}人脸过滤失败:`, error);
-              });
-          })
-          .catch(error => {
-            console.error(`创建目标目录失败:`, error);
+        try {
+          // 获取相册中的图片总数作为人脸过滤任务的总数
+          const files = fs.readdirSync(albumDir);
+          const imageFiles = files.filter(file => {
+            const ext = path.extname(file).toLowerCase();
+            return ['.jpg', '.jpeg', '.png', '.gif'].includes(ext);
           });
+          
+          // 创建人脸过滤任务
+          console.log(`为相册${this.title}创建人脸过滤任务，共${imageFiles.length}个图片文件`);
+          await createFaceFilterTask(this.albumId, this.title, albumDir, targetDir, imageFiles.length);
+          
+          // 启动人脸过滤队列
+          startFaceFilterQueue();
+          
+          console.log(`相册${this.title}人脸过滤任务已创建并加入队列`);
+        } catch (error) {
+          console.error(`创建人脸过滤任务失败:`, error);
+        }
       }
     }
     return true;
@@ -669,3 +832,5 @@ class AlbumTask {
     };
   }
 }
+
+

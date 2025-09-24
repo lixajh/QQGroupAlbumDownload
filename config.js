@@ -10,7 +10,7 @@ const config = {
   autoFaceFilter: true, // 是否自动执行人脸过滤
   faceFilterTargetDir: require('path').join(require('os').homedir(), 'Desktop/QQ群相册下载/儿子照片'), // 人脸过滤结果保存目录
   faceFilterApiUrl: 'http://localhost:8000/recognize', // 人脸识别API地址
-  faceFilterConfidenceThreshold: 0.8, // 置信度阈值
+  faceFilterConfidenceThreshold: 0.001, // 置信度阈值
 };
 
 module.exports = config;
