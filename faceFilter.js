@@ -199,6 +199,18 @@ async function runFaceFilter(sourceDir, targetDir, options = {}) {
     }
     
     console.log(`[人脸过滤] 处理完成 - 共处理 ${processedCount} 个文件, ${matchedCount} 个匹配`);
+    
+    // 任务完成后，删除下载的全部照片（源目录）
+    try {
+      if (sourceDir && targetDir && sourceDir !== targetDir) {
+        console.log(`[人脸过滤] 开始删除下载的照片目录: ${sourceDir}`);
+        await fs.remove(sourceDir);
+        console.log(`[人脸过滤] 已删除下载的照片目录: ${sourceDir}`);
+      }
+    } catch (error) {
+      console.error(`[人脸过滤] 删除下载的照片目录失败: ${error.message}`);
+    }
+    
     return {
       success: true,
       processed: processedCount,

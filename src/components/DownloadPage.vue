@@ -60,7 +60,8 @@
                   <!-- 通用删除按钮 -->
                   <el-button
                     @click="deleteTask(scope.row.id, scope.row.type)"
-                    :disabled="scope.row.type === 'download' && scope.row.status == TaskStatus.FINISH"
+                    :disabled="(scope.row.type === 'download' && scope.row.status == TaskStatus.FINISH) || 
+                              (scope.row.type === 'filter' && scope.row.status == TaskStatus.FINISH)"
                     type="danger"
                     >删除</el-button
                   >
@@ -80,28 +81,39 @@
   <div>
     <el-row>
       <el-col :span="8" style="padding: 0% 5%">
-        <el-button
-          v-if="!isStart"
-          @click="startDownload()"
-          style="width: 100%"
-          type="primary"
-          >开始下载</el-button
-        >
-        <el-button
-          v-if="isStart && !isPause"
-          @click="stopDownload(undefined)"
-          style="width: 100%"
-          type="primary"
-          >停止下载</el-button
-        >
-        <el-button
-          v-if="isStart && isPause"
-          @click="resumeDownload(undefined)"
-          style="width: 100%"
-          type="primary"
-          >恢复下载</el-button
-        ></el-col
-      >
+        <!-- 检查是否所有任务都已完成 -->
+        <template v-if="isAllTasksFinished">
+          <el-button
+            @click="deleteAllTasks()"
+            style="width: 100%"
+            type="success"
+            >完成</el-button
+          >
+        </template>
+        <template v-else>
+          <el-button
+            v-if="!isStart"
+            @click="startDownload()"
+            style="width: 100%"
+            type="primary"
+            >开始下载</el-button
+          >
+          <el-button
+            v-if="isStart && !isPause"
+            @click="stopDownload(undefined)"
+            style="width: 100%"
+            type="primary"
+            >停止下载</el-button
+          >
+          <el-button
+            v-if="isStart && isPause"
+            @click="resumeDownload(undefined)"
+            style="width: 100%"
+            type="primary"
+            >恢复下载</el-button
+          >
+        </template>
+      </el-col>
       <el-col :span="8" style="padding: 0% 5%">
         <el-button
           @click="deleteDownload(undefined)"
@@ -143,21 +155,44 @@ const isPause = ref(false);
 // 合并任务列表并添加任务类型
 const allTasks = computed(() => {
   // 为下载任务添加类型标记
-  const downloadWithType = downloadTasks.value.map(task => ({
-    ...task,
-    type: 'download'
-  }));
+  const downloadWithType = downloadTasks.value.map(task => {
+    if (typeof task !== 'object' || task === null) {
+      return { type: 'download', status: 'error' };
+    }
+    return {
+      ...task,
+      type: 'download'
+    };
+  });
   
   // 为人脸过滤任务添加类型标记
-  const filterWithType = filterTasks.value.map(task => ({
-    ...task,
-    type: 'filter',
-    // 确保数量字段存在
-    num: task.num || task.total || 0
-  }));
+  const filterWithType = filterTasks.value.map(task => {
+    if (typeof task !== 'object' || task === null) {
+      return { type: 'filter', status: 'error', num: 0 };
+    }
+    return {
+      ...task,
+      type: 'filter',
+      // 确保数量字段存在
+      num: (task as any).num || (task as any).total || 0
+    };
+  });
   
   // 合并两个任务列表
   return [...downloadWithType, ...filterWithType];
+});
+
+// 检查是否所有任务都已完成
+const isAllTasksFinished = computed(() => {
+  // 检查是否有任务
+  if (allTasks.value.length === 0) {
+    return false;
+  }
+  
+  // 检查所有任务是否都已完成或失败
+  return allTasks.value.every(task => 
+    task.status === TaskStatus.FINISH || task.status === TaskStatus.ERROR
+  );
 });
 
 // 检查是否需要显示成功数和失败数列
