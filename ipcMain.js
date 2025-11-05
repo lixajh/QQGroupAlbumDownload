@@ -424,10 +424,29 @@ exports.getAlbumList = getAlbumList;
 exports.getPatchAlbum = getPatchAlbum;
 exports.getConfigInfo = getConfigInfo;
 const sanitizeFileName = (fileName) => {
-  return fileName.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, "");
+  // 过滤掉所有非字母、数字和汉字的字符
+  // 这将移除所有标点符号、空格和其他特殊字符
+  let sanitized = fileName.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, "");
+  
+  // 如果过滤后结果为空，生成一个默认名称
+  if (!sanitized || sanitized.length === 0) {
+    sanitized = generateAlbumName(fileName);
+  }
+  
+  return sanitized;
 };
 const filterFileName = (name) => {
-  return name.match(/[0-9a-zA-Z/.]*/g).join("");
+  // 过滤掉所有非字母、数字、点号和斜杠的字符
+  // 使用replace方法更安全，可以确保总是返回字符串
+  let filtered = name.replace(/[^0-9a-zA-Z/.]/g, "");
+  
+  // 如果过滤后结果为空，生成一个默认文件名
+  if (!filtered || filtered.length === 0) {
+    // 使用时间戳和随机数生成一个唯一的文件名
+    filtered = `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+  
+  return filtered;
 };
 const generateAlbumName = (albumDirName) => {
   const randomString = getMD5FirstSixChars(albumDirName);
@@ -788,8 +807,10 @@ class AlbumTask {
       
       // 如果配置了自动人脸过滤，则执行
       if (config.autoFaceFilter && config.faceFilterTargetDir) {
-        const albumDir = path.join(config.downloadPath, this.title);
-        const targetDir = path.join(config.faceFilterTargetDir, this.title);
+        // 使用sanitizeFileName过滤相册名称，确保不包含标点符号
+        const sanitizedTitle = sanitizeFileName(this.title);
+        const albumDir = path.join(config.downloadPath, sanitizedTitle);
+        const targetDir = path.join(config.faceFilterTargetDir, sanitizedTitle);
         
         try {
           // 获取相册中的图片总数作为人脸过滤任务的总数
@@ -800,13 +821,13 @@ class AlbumTask {
           });
           
           // 创建人脸过滤任务
-          console.log(`为相册${this.title}创建人脸过滤任务，共${imageFiles.length}个图片文件`);
-          await createFaceFilterTask(this.albumId, this.title, albumDir, targetDir, imageFiles.length);
+          console.log(`为相册${sanitizedTitle}创建人脸过滤任务，共${imageFiles.length}个图片文件`);
+          await createFaceFilterTask(this.albumId, sanitizedTitle, albumDir, targetDir, imageFiles.length);
           
           // 启动人脸过滤队列
           startFaceFilterQueue();
           
-          console.log(`相册${this.title}人脸过滤任务已创建并加入队列`);
+          console.log(`相册${sanitizedTitle}人脸过滤任务已创建并加入队列`);
         } catch (error) {
           console.error(`创建人脸过滤任务失败:`, error);
         }

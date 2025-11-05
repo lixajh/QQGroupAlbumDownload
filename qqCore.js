@@ -1,6 +1,8 @@
 const fs = require('fs-extra');
 const path = require('path');
 const os = require('os');
+const axios = require('axios');
+const config = require('./config');
 
 // 配置文件路径
 const configFilePath = path.join(os.homedir(), '.QQGroupAlbumDownload', 'loginInfo.json');
@@ -72,6 +74,45 @@ exports.clearLoginInfo = () => {
     }
   } catch (error) {
     console.error('清除登录信息失败:', error);
+  }
+};
+
+// 在线校验缓存登录是否有效（动态判断）
+exports.validateLoginOnline = async () => {
+  try {
+    if (!cookieStr || !tk || !qq) {
+      return { ok: false, reason: 'missing' };
+    }
+    const uin = Array.isArray(qq) ? qq[0] : qq;
+    const qunId = config.qqGroupNumber;
+    const url = `https://h5.qzone.qq.com/proxy/domain/u.photo.qzone.qq.com/cgi-bin/upp/qun_list_album_v2?g_tk=${tk}&callback=shine2_Callback&qunId=${qunId}&uin=${uin}&start=0&num=1&getMemberRole=1&inCharset=utf-8&outCharset=utf-8&source=qzone&attach_info=&callbackFun=shine2`;
+
+    const { data, status } = await axios.get(url, {
+      headers: { Cookie: cookieStr },
+      timeout: 15000,
+    });
+
+    if (status !== 200) {
+      return { ok: null, reason: 'http', status };
+    }
+    const text = typeof data === 'string' ? data : JSON.stringify(data);
+    // 典型失效特征
+    if (
+      text.includes('尚未登录') ||
+      text.includes('登录超时') ||
+      text.includes('未登录') ||
+      text.includes('对不起，您尚未登录') ||
+      text.includes('code":-3000') ||
+      text.includes('subcode":-4001')
+    ) {
+      // 服务端已判定失效，立即清理缓存
+      exports.clearLoginInfo();
+      return { ok: false, reason: 'expired', code: -3000, subcode: -4001 };
+    }
+    return { ok: true };
+  } catch (error) {
+    // 网络异常或其他错误，不清理缓存，仅返回未知
+    return { ok: null, reason: 'network', message: error.message };
   }
 };
 

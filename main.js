@@ -1,5 +1,5 @@
 const { app, BrowserWindow, dialog } = require('electron');
-const { setCookies, setTk, setQQ, isLoggedIn, getCookies, getTk, getQQ, isLoginExpired } = require("./qqCore");
+const { setCookies, setTk, setQQ, isLoggedIn, getCookies, getTk, getQQ, isLoginExpired, validateLoginOnline } = require("./qqCore");
 require("./ipcMain.js");
 const path = require("node:path");
 const os = require('os');
@@ -99,20 +99,41 @@ function createWindow() {
 }
 
 // 应用启动时检查是否已登录
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   console.log('应用启动，开始检查登录状态');
   
-  // 详细检查登录状态
+  // 详细检查登录状态概览
   console.log('当前登录信息概览:');
   console.log('QQ号:', getQQ() ? getQQ() : '不存在');
   console.log('Cookie状态:', getCookies() ? '存在' : '不存在');
   console.log('TK状态:', getTk() ? '存在' : '不存在');
+
+  // 动态在线校验：在调用isLoggedIn之前进行
+  let onlineCheckResult = null;
+  try {
+    onlineCheckResult = await validateLoginOnline();
+    console.log('在线校验结果:', onlineCheckResult);
+  } catch (e) {
+    console.log('在线校验异常:', e.message);
+  }
   
-  // 检查是否有有效的登录信息
+  if (onlineCheckResult && onlineCheckResult.ok === false && onlineCheckResult.reason === 'expired') {
+    console.log('在线校验判定登录失效，已清理缓存，进入登录流程');
+    dialog.showMessageBox({
+      type: "info",
+      title: "登录失效",
+      message: "检测到登录信息已失效，请重新登录",
+      buttons: ["确定"],
+    }).then(() => {
+      createWindow();
+    });
+    return;
+  }
+  
+  // 本地校验
   if (isLoggedIn()) {
     console.log('主程序检测到有效的登录信息，直接进入主界面');
     
-    // 显示登录信息详情对话框
     dialog.showMessageBox({
       type: "info",
       title: "自动登录",
@@ -123,16 +144,12 @@ app.whenReady().then(() => {
       createMainWindow();
     });
   } else {
-    // 如果没有有效的登录信息，显示登录窗口
     console.log('主程序没有检测到有效的登录信息，显示登录窗口');
-    
-    // 检查登录失效的具体原因
     if (isLoginExpired()) {
       console.log('登录失效原因: 登录信息已过期或不完整');
     } else {
       console.log('登录失效原因: 缺少必要的登录信息');
     }
-    
     createWindow();
   }
 });
